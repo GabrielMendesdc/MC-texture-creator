@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Texture Mixer</title>
+    <!-- Tailwind CSS CDN - MANTENHA-O AQUI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Seu CSS personalizado - MANTENHA-O AQUI -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Bem-vindo ao Minecraft Texture Mixer!</h1>
+        <p>Faça upload de seus packs de textura para começar a combiná-los.</p>
+        
+        {% if error %}
+            <p class="warning">{{ error }}</p>
+        {% endif %}
+
+        <form action="{{ url_for('upload_packs') }}" method="post" enctype="multipart/form-data">
+            <!-- O input de arquivo real -->
+            <input type="file" name="texture_packs" id="texture_packs_upload" multiple accept=".zip">
+            <!-- O label que será estilizado como botão -->
+            <label for="texture_packs_upload" class="file-upload-label">Escolher Packs de Textura</label>
+            
+            <!-- Opcional: Mostrar o nome dos arquivos selecionados -->
+            <div id="selected-files-display" style="margin-top: 10px; color: #a0aec0;"></div>
+
+            <button type="submit">Upload Packs</button>
+        </form>
+    </div>
+
+    <script>
+        // Script para mostrar o nome dos arquivos selecionados
+        document.getElementById('texture_packs_upload').addEventListener('change', function() {
+            const display = document.getElementById('selected-files-display');
+            display.innerHTML = ''; // Limpa o display anterior
+            if (this.files.length > 0) {
+                let fileNames = [];
+                for (let i = 0; i < this.files.length; i++) {
+                    fileNames.push(this.files[i].name);
+                }
+                display.innerHTML = 'Arquivos selecionados: ' + fileNames.join(', ');
+            } else {
+                display.innerHTML = 'Nenhum arquivo selecionado.';
+            }
+        });
+    </script>
+</body>
+</html>

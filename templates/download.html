@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download do seu Pack - Minecraft Texture Mixer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="download-container">
+        <h1>Seu Pack Personalizado Está Pronto!</h1>
+        <p>Clique no botão abaixo para baixar seu novo pack de texturas:</p>
+        <a href="{{ url_for('download_pack', pack_name=pack_name) }}" class="download-button" download="{{ pack_name }}">
+            Baixar {{ pack_name }}
+        </a>
+        <p class="mt-4 text-sm">
+            Lembre-se de colocar este arquivo na pasta 'resourcepacks' do seu Minecraft.
+        </p>
+        <a href="{{ url_for('index') }}" class="mt-6 block">Criar outro Pack</a>
+    </div>
+</body>
+</html>

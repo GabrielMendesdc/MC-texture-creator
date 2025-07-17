@@ -1,0 +1,11 @@
+.env
+__pycache__/
+*.pyc
+uploads/
+generated_packs/
+temp_previews/
+default.zip
+txt/
+app.py.old
+app_2.py
+crop.py

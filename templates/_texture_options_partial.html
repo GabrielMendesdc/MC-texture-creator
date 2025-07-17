@@ -1,0 +1,39 @@
+{# CORREÇÃO AQUI: Use a notação de colchetes ['items'] para acessar a chave 'items' do dicionário #}
+{% set selected_profile_items = profiles['standard']['items'] %}
+
+{% for item_type in selected_profile_items %}
+    {% set has_item_in_any_pack = false %}
+    {% for pack in uploaded_packs_data %}
+        {% if item_type in pack.available_textures %}
+            {% set has_item_in_any_pack = true %}
+        {% endif %}
+    {% endfor %}
+
+    {% if has_item_in_any_pack %}
+        <div class="selection-group">
+            <label for="select_{{ item_type }}">{{ item_type.replace('_', ' ').title() }}:</label>
+            <select id="select_{{ item_type }}" name="select_{{ item_type }}">
+                <option value="default">Minecraft Padrão (Vanilla)</option>
+                {% for pack in uploaded_packs_data %}
+                    {% if item_type in pack.available_textures %}
+                        <option value="{{ pack.id }}">{{ pack.name }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+        </div>
+    {% endif %}
+{% endfor %}
+
+{#
+    Observações:
+    - A lógica `{% set selected_profile_items = profiles['standard'].items %}` acima define qual perfil será exibido
+      primeiro. Para mudar dinamicamente a ORDEM da lista de seleções no frontend sem recarregar a página,
+      você precisaria de JavaScript.
+    - O JavaScript `updateTextureOptions()` é apenas um placeholder. Para uma funcionalidade completa
+      deve:
+      1. Pegar o valor do radio button selecionado.
+      2. Fazer uma requisição AJAX para o backend (ex: para uma nova rota `/get_texture_options/<profile_id>`).
+      3. O backend responderia com um JSON dos itens para aquele perfil ou um HTML renderizado deste parcial.
+      4. O JavaScript atualizaria o `div#texture_options_container` com o novo conteúdo.
+    - A filtragem para "só mostrar classes que tem pelo menos 1 item nas txt upadas" está feita pelo `if has_item_in_any_pack`.
+#}

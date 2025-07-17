@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selecione suas Texturas - Minecraft Texture Mixer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* Estilos para as cores do Minecraft */
+        /* Estas cores são as mesmas definidas em format_minecraft_text no app.py */
+        .mc-color-0 { color: #000000; } /* Black */
+        .mc-color-1 { color: #0000AA; } /* Dark Blue */
+        .mc-color-2 { color: #00AA00; } /* Dark Green */
+        .mc-color-3 { color: #00AAAA; } /* Dark Aqua */
+        .mc-color-4 { color: #AA0000; } /* Dark Red */
+        .mc-color-5 { color: #AA00AA; } /* Dark Purple */
+        .mc-color-6 { color: #FFAA00; } /* Gold */
+        .mc-color-7 { color: #AAAAAA; } /* Gray */
+        .mc-color-8 { color: #555555; } /* Dark Gray */
+        .mc-color-9 { color: #5555FF; } /* Blue */
+        .mc-color-a { color: #55FF55; } /* Green */
+        .mc-color-b { color: #55FFFF; } /* Aqua */
+        .mc-color-c { color: #FF5555; } /* Red */
+        .mc-color-d { color: #FF55FF; } /* Light Purple */
+        .mc-color-e { color: #FFFF55; } /* Yellow */
+        .mc-color-f { color: #FFFFFF; } /* White */
+
+        /* Estilos para formatação especial */
+        .mc-bold { font-weight: bold; }
+        .mc-strikethrough { text-decoration: line-through; }
+        .mc-underline { text-decoration: underline; }
+        .mc-italic { font-style: italic; }
+        .mc-obfuscated { 
+            /* Obfuscated é difícil com CSS puro. */
+            /* Você pode tentar uma fonte que simule ou usar um fallback como: */
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            animation: obfuscate 0.5s infinite alternate; /* Exemplo de animação simples */
+        }
+        /* Exemplo de keyframes para animação obfuscada */
+        @keyframes obfuscate {
+            from { opacity: 1; }
+            to { opacity: 0.5; letter-spacing: 0.2em; }
+        }
+
+        .mc-reset {
+            color: inherit; /* Volta para a cor do elemento pai */
+            font-weight: normal;
+            text-decoration: none;
+            font-style: normal;
+            text-transform: none;
+            letter-spacing: normal;
+            animation: none; /* Desativa a animação de obfuscate */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Selecione suas Texturas</h1>
+
+        <h2>Packs Enviados:</h2>
+        {% if uploaded_packs_data %}
+            <ul class="pack-list">
+                {% for pack in uploaded_packs_data %}
+                    {# Exibe o nome já formatado, sem o ID #}
+                    <li>{{ pack.formatted_name | safe }}</li> 
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="warning">Nenhum pack foi enviado ou pôde ser analisado. Por favor, <a href="{{ url_for('index') }}">volte e faça o upload</a>.</p>
+        {% endif %}
+
+        <div class="selection-area">
+            <form action="{{ url_for('generate_pack') }}" method="post">
+                <div class="profile-selection">
+                    <h3>Escolha um Perfil:</h3>
+                    {% for profile_id, profile_data in profiles.items() %}
+                        <label>
+                            <input type="radio" name="profile_selection" value="{{ profile_id }}"
+                                   {% if profile_id == 'bedwars' %} checked {% endif %} {# Perfil padrão Bedwars #}
+                                   onchange="updateTextureOptions(this.value)">
+                            {{ profile_data.name }}
+                        </label>
+                    {% endfor %}
+                </div>
+
+                {# NOVO: Campo para o caminho da skin padrão #}
+                <div class="selection-group">
+                    <label for="default_skin_path">Caminho da Skin Padrão (assets/minecraft/textures/entity/):</label>
+                    <input type="text" id="default_skin_path" name="default_skin_path" 
+                           placeholder="Ex: steve.png ou alex.png"
+                           value="steve.png"> {# Valor padrão #}
+                </div>
+
+                <h2>Opções de Textura por Item</h2>
+                <div id="texture_options_container">
+                    {# Este bloco será preenchido e atualizado via JavaScript #}
+                </div>
+
+                <button type="submit">Gerar Pack Personalizado</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Passa os dados do Python (Jinja) para o JavaScript
+        const ALL_PACKS_DATA = {{ uploaded_packs_data | tojson | safe }};
+        const ALL_PROFILES = {{ profiles | tojson | safe }};
+        const ALL_ITEM_TYPES = {{ all_item_types | tojson | safe }};
+
+        // Mapeamento de friendly_name para URLs de preview vanilla estáticas
+        // Agora passado como uma string JSON e parseado no JavaScript
+        const VANILLA_PREVIEW_MAP = JSON.parse('{{ vanilla_preview_map_json_string | safe }}');
+
+        // Função para atualizar a imagem de preview quando uma seleção muda
+        function updatePreview(selectElementId) {
+            const selectElement = document.getElementById(selectElementId);
+            const previewImage = document.getElementById(selectElementId.replace('select_', 'preview_'));
+            
+            if (!selectElement || !previewImage) {
+                console.warn(`Elementos não encontrados para o ID: ${selectElementId}`);
+                return;
+            }
+
+            const selectedValue = selectElement.value; // Pode ser 'default' ou um pack_id
+            const itemType = selectElementId.replace('select_', ''); // Ex: 'Lã', 'Espada de Diamante'
+
+            if (selectedValue === 'default') {
+                // Se 'default' for selecionado, use a imagem vanilla do mapeamento
+                if (VANILLA_PREVIEW_MAP[itemType]) {
+                    previewImage.src = VANILLA_PREVIEW_MAP[itemType];
+                    previewImage.alt = `Textura Padrão (Vanilla) para ${itemType}`;
+                } else {
+                    previewImage.src = ""; // Limpa se não houver preview vanilla mapeada
+                    previewImage.alt = `Textura Padrão para ${itemType} (sem preview)`;
+                }
+                return;
+            }
+
+            // Encontra o pack selecionado nos dados carregados
+            const selectedPackData = ALL_PACKS_DATA.find(pack => pack.id === selectedValue);
+
+            // Verifica se o pack e a textura para o itemType existem
+            if (selectedPackData && selectedPackData.available_textures && selectedPackData.available_textures[itemType]) {
+                const textureInfo = selectedPackData.available_textures[itemType];
+                previewImage.src = textureInfo.static_url_path; // Define a URL da imagem de preview
+                previewImage.alt = `Preview de ${itemType} de ${selectedPackData.name}`;
+            } else {
+                // Caso não encontre a imagem no pack (por algum motivo, erro ou item não disponível)
+                previewImage.src = "";
+                previewImage.alt = "Nenhuma pré-visualização disponível ou textura não encontrada no pack.";
+            }
+        }
+
+        // Função para (re)gerar as opções de textura com base no perfil selecionado
+        function updateTextureOptions(profileId) {
+            const container = document.getElementById('texture_options_container');
+            if (!container) {
+                console.error("Elemento 'texture_options_container' não encontrado!");
+                return;
+            }
+
+            const profileData = ALL_PROFILES[profileId];
+            if (!profileData || !profileData.items) {
+                console.error(`Dados do perfil '${profileId}' ou seus itens não encontrados em ALL_PROFILES.`);
+                container.innerHTML = "<p>Erro ao carregar opções de perfil.</p>";
+                return;
+            }
+            
+            const profileItems = profileData.items; // Itens para o perfil selecionado
+            let html = ''; // String para construir o HTML dos dropdowns
+
+            profileItems.forEach(itemType => {
+                let packsWithItem = []; // Armazena os packs que contêm este 'itemType'
+                
+                // Percorre todos os packs enviados para ver quais têm a textura
+                ALL_PACKS_DATA.forEach(pack => {
+                    if (pack.available_textures && pack.available_textures[itemType]) {
+                        packsWithItem.push(pack);
+                    }
+                });
+
+                // Só cria o grupo de seleção se houver pelo menos um pack com a textura
+                // OU se houver uma preview vanilla mapeada para este item!
+                if (packsWithItem.length > 0 || VANILLA_PREVIEW_MAP[itemType]) {
+                    let defaultSelectedPackId = 'default'; // Padrão é o vanilla
+                    let defaultPreviewSrc = VANILLA_PREVIEW_MAP[itemType] || ""; // Padrão para preview vanilla ou vazia
+
+                    // Se houver packs enviados, tentamos usar a textura do primeiro pack como padrão.
+                    if (ALL_PACKS_DATA.length > 0) {
+                        const firstUploadedPack = ALL_PACKS_DATA[0];
+                        if (firstUploadedPack.available_textures && firstUploadedPack.available_textures[itemType]) {
+                            defaultSelectedPackId = firstUploadedPack.id;
+                            defaultPreviewSrc = firstUploadedPack.available_textures[itemType].static_url_path;
+                        }
+                    }
+
+                    // O nome do campo 'name' no select deve ser consistente com o que o Flask espera.
+                    // Usaremos o itemType.replace(/ /g, '_') para garantir que não haja espaços.
+                    const selectName = `select_${itemType.replace(/ /g, '_')}`;
+
+                    html += `
+                    <div class="selection-group">
+                        <label for="${selectName}">${itemType}:</label>
+                        <select id="${selectName}" name="${selectName}" onchange="updatePreview('${selectName}')">
+                            <option value="default" ${defaultSelectedPackId === 'default' ? 'selected' : ''}>Minecraft Padrão (Vanilla)</option>`;
+                    
+                    packsWithItem.forEach(pack => {
+                        const isSelected = (pack.id === defaultSelectedPackId) ? 'selected' : '';
+                        // Usa o nome formatado do pack no dropdown
+                        html += `<option value="${pack.id}" ${isSelected}>${pack.formatted_name}</option>`;
+                    });
+
+                    html += `
+                        </select>
+                        <img id="preview_${itemType.replace(/ /g, '_')}" class="texture-preview" src="${defaultPreviewSrc}" 
+                             alt="${defaultPreviewSrc ? 'Pré-visualização da textura' : 'Nenhuma pré-visualização disponível'}">
+                    </div>`;
+                }
+            });
+            container.innerHTML = html;
+            // Após gerar as opções, atualiza as previews iniciais
+            profileItems.forEach(itemType => {
+                const selectId = `select_${itemType.replace(/ /g, '_')}`;
+                // Chamar updatePreview para cada select recém-criado
+                updatePreview(selectId);
+            });
+        }
+
+        // Executa a função de atualização de opções ao carregar a página
+        document.addEventListener('DOMContentLoaded', () => {
+            const initialProfileRadio = document.querySelector('input[name="profile_selection"]:checked');
+            if (initialProfileRadio) {
+                updateTextureOptions(initialProfileRadio.value);
+            } else {
+                console.warn("Nenhum perfil pré-selecionado encontrado, usando 'bedwars' como fallback.");
+                updateTextureOptions('bedwars'); 
+            }
+        });
+    </script>
+</body>
+</html>
