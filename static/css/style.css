@@ -23,7 +23,7 @@ body {
 }
 
 h1, h2, h3 {
-    color: #63b3ed; /* Títulos em azul claro (Tailwind blue-400) */
+    color: #acc90c; /* Títulos em azul claro (Tailwind blue-400) */
     margin-bottom: 15px;
 }
 
@@ -78,6 +78,7 @@ h1, h2, h3 {
     flex-direction: column;
     align-items: center;
     margin: 8px 0;
+    text-align: center;
 }
 
 .selection-group label {
@@ -110,16 +111,37 @@ h1, h2, h3 {
     color: #e2e8f0; /* Cor do texto das opções */
 }
 
-/* Estilos da imagem de pré-visualização */
+.item-group {
+  margin-bottom: 32px;
+}
+
+.item-group > h3 {
+  margin-bottom: 0.8rem;
+  font-weight: bold;
+  border-bottom: 2px solid #7193bd;
+  padding-bottom: 0.3rem;
+  font-size: 1.4em;
+  color: #6dc41c;
+}
+
+
+.group-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 1rem;
+}
+
+
 .texture-preview {
-    width: 128px; /* Tamanho maior para a preview */
-    height: 128px;
-    border: 1px solid #718096; /* Borda (Tailwind gray-500) */
-    background-color: rgb(80, 69, 69); /* vermelho, só pra testar */
-    flex-shrink: 0; /* Não encolhe */
-    object-fit: contain; /* Garante que a imagem se ajuste sem cortar */
-    image-rendering: pixelated; /* Mantém a nitidez das texturas de Minecraft */
-    border-radius: 4px; /* Cantos levemente arredondados */
+    width: 96px;
+    height: 96px;
+    border: 1px solid #718096;
+    background-color: #2d3748;
+    flex-shrink: 0;
+    object-fit: contain;
+    image-rendering: pixelated;
+    border-radius: 6px; 
+    margin-top: 0.3rem;
 }
 
 /* Estilos dos botões */

@@ -96,132 +96,66 @@
     </div>
 
     <script>
-    // Isto passa o dicionário do Python para o JavaScript
         const allTextures = {{ textures_dict | tojson }};
-        console.log("allTextures carregado:", allTextures);
-        const ALL_PACKS_DATA = {{ uploaded_packs_data | tojson | safe }};
-        const ALL_PROFILES = {{ profiles | tojson | safe }};
-        const ALL_ITEM_TYPES = {{ all_item_types | tojson | safe }};
+        // Mapeamento das categorias com base nos nomes do TEXTURE_MAPPING
+        const categorias = {
+            blocos: [
+                "Lã", "Madeira (Tábuas)", "Pedra"
+            ],
+            minerios: [
+                "Minério de Diamante", "Minério de Esmeralda", "Esmeralda (Item)"
+                // Você pode adicionar manualmente outros ores e ingots aqui
+            ],
+            ferramentas: [
+                "Espada de Diamante", "Espada de Ferro", "Espada de Ouro", "Espada de Madeira", "Espada de Pedra",
+                "Picareta de Diamante", "Picareta de Ferro", "Picareta de Ouro", "Picareta de Madeira", "Picareta de Pedra",
+                "Machado de Diamante", "Machado de Ferro", "Machado de Ouro", "Machado de Madeira", "Machado de Pedra",
+                "Pá de Diamante", "Pá de Ferro", "Pá de Ouro", "Pá de Madeira", "Pá de Pedra",
+                "Enxada de Diamante", "Enxada de Ferro", "Enxada de Ouro", "Enxada de Madeira", "Enxada de Pedra",
+                "Arco", "Flecha"
+            ],
+            armaduras: [
+                // Armaduras de Diamante
+                "Capacete de Diamante", "Peitoral de Diamante", "Calças de Diamante", "Botas de Diamante",
+                // Armaduras de Ferro
+                "Capacete de Ferro", "Peitoral de Ferro", "Calças de Ferro", "Botas de Ferro",
+                // Armaduras de Ouro
+                "Capacete de Ouro", "Peitoral de Ouro", "Calças de Ouro", "Botas de Ouro",
+                // Armaduras de Couro
+                "Capacete de Couro", "Peitoral de Couro", "Calças de Couro", "Botas de Couro"
+            ]
+        };
 
-        // Mapeamento de friendly_name para URLs de preview vanilla estáticas
-        // Agora passado como uma string JSON e parseado no JavaScript
-        const VANILLA_PREVIEW_MAP = JSON.parse('{{ vanilla_preview_map_json_string | safe }}');
+        function renderizarGrupo(titulo, listaItens) {
+            let grupoHtml = `<div class="item-group"><h3>${titulo}</h3><div class="group-grid">`;
 
-        // Função para atualizar a imagem de preview quando uma seleção muda
-        function updatePreview(selectElementId) {
-            const selectElement = document.getElementById(selectElementId);
-            const previewImage = document.getElementById(selectElementId.replace('select_', 'preview_'));
-            
-            if (!selectElement || !previewImage) {
-                console.warn(`Elementos não encontrados para o ID: ${selectElementId}`);
-                return;
-            }
-
-            const selectedValue = selectElement.value; // Pode ser 'default' ou um pack_id
-            const itemType = selectElementId.replace('select_', ''); // Ex: 'Lã', 'Espada de Diamante'
-
-            if (selectedValue === 'default') {
-                // Se 'default' for selecionado, use a imagem vanilla do mapeamento
-                if (VANILLA_PREVIEW_MAP[itemType]) {
-                    previewImage.src = VANILLA_PREVIEW_MAP[itemType];
-                    previewImage.alt = `Textura Padrão (Vanilla) para ${itemType}`;
-                } else {
-                    previewImage.src = ""; // Limpa se não houver preview vanilla mapeada
-                    previewImage.alt = `Textura Padrão para ${itemType} (sem preview)`;
-                }
-                return;
-            }
-
-            // Encontra o pack selecionado nos dados carregados
-            const selectedPackData = ALL_PACKS_DATA.find(pack => pack.id === selectedValue);
-
-            // Verifica se o pack e a textura para o itemType existem
-            if (selectedPackData && selectedPackData.available_textures && selectedPackData.available_textures[itemType]) {
-                const textureInfo = selectedPackData.available_textures[itemType];
-                previewImage.src = textureInfo.static_url_path; // Define a URL da imagem de preview
-                previewImage.alt = `Preview de ${itemType} de ${selectedPackData.name}`;
-            } else {
-                // Caso não encontre a imagem no pack (por algum motivo, erro ou item não disponível)
-                previewImage.src = "";
-                previewImage.alt = "Nenhuma pré-visualização disponível ou textura não encontrada no pack.";
-            }
-        }
-
-        // Função para (re)gerar as opções de textura com base no perfil selecionado
-        function updateTextureOptions(profileId) {
-            const container = document.getElementById('texture_options_container');
-            if (!container) {
-                console.error("Elemento 'texture_options_container' não encontrado!");
-                return;
-            }
-
-            const profileData = ALL_PROFILES[profileId];
-            if (!profileData || !profileData.items) {
-                console.error(`Dados do perfil '${profileId}' ou seus itens não encontrados em ALL_PROFILES.`);
-                container.innerHTML = "<p>Erro ao carregar opções de perfil.</p>";
-                return;
-            }
-            
-            const profileItems = profileData.items; // Itens para o perfil selecionado
-            let html = ''; // String para construir o HTML dos dropdowns
-
-            profileItems.forEach(itemType => {
-                let packsWithItem = [];
-
-                ALL_PACKS_DATA.forEach(pack => {
-                    if (pack.available_textures && pack.available_textures[itemType]) {
-                        packsWithItem.push(pack);
-                    }
-                });
-
-                if (packsWithItem.length > 0 || VANILLA_PREVIEW_MAP[itemType]) {
-                    let defaultSelectedPackId = 'default';
-                    let defaultPreviewSrc = VANILLA_PREVIEW_MAP[itemType] || "";
-
-                    if (packsWithItem.length > 0) {
-                        defaultSelectedPackId = packsWithItem[0].id;
-                        defaultPreviewSrc = packsWithItem[0].available_textures[itemType].static_url_path;
-                    }
-
-                    const selectName = `select_${itemType.replace(/ /g, '_')}`;
-
-                    html += `
-                    <div class="selection-group">
-                        <label for="${selectName}">${itemType}:</label>
-                        <select id="${selectName}" name="${selectName}" onchange="updatePreview('${selectName}')">
-                            <option value="default" ${defaultSelectedPackId === 'default' ? 'selected' : ''}>Minecraft Padrão (Vanilla)</option>`;
-
-                    packsWithItem.forEach(pack => {
-                        const isSelected = (pack.id === defaultSelectedPackId) ? 'selected' : '';
-                        html += `<option value="${pack.id}" ${isSelected}>${pack.formatted_name}</option>`;
-                    });
-
-                    html += `</select>
-                        <img class="texture-preview" src="${defaultPreviewSrc}" alt="${itemType}">
-                    </div>`;
+            listaItens.forEach(itemName => {
+                if (allTextures[itemName]) {
+                    const src = allTextures[itemName].static_url_path || "";
+                    grupoHtml += `
+                        <div class="selection-group">
+                            <label>${itemName}</label>
+                            <img class="texture-preview" src="${src}" alt="${itemName}">
+                        </div>
+                    `;
                 }
             });
-            console.log("HTML FINAL QUE VAI PARA O DOM:\n", html);
-            html += `<img src="https://minecraft.wiki/images/Item_diamond_sword.png">`;
+            grupoHtml += "</div></div>";
+            return grupoHtml;
+        }
+
+        function montarPreviewsPorCategoria() {
+            const container = document.getElementById("texture_options_container");
+            let html = "";
+            html += renderizarGrupo("Blocos", categorias.blocos);
+            html += renderizarGrupo("Minérios", categorias.minerios);
+            html += renderizarGrupo("Ferramentas", categorias.ferramentas);
+            html += renderizarGrupo("Armaduras", categorias.armaduras);
             container.innerHTML = html;
-
-            // Após gerar as opções, atualiza as previews iniciais
-            profileItems.forEach(itemType => {
-                const selectId = `select_${itemType.replace(/ /g, '_')}`;
-                // Chamar updatePreview para cada select recém-criado
-                updatePreview(selectId);
-            });
         }
 
-        // Executa a função de atualização de opções ao carregar a página
         document.addEventListener('DOMContentLoaded', () => {
-            const initialProfileRadio = document.querySelector('input[name="profile_selection"]:checked');
-            if (initialProfileRadio) {
-                updateTextureOptions(initialProfileRadio.value);
-            } else {
-                console.warn("Nenhum perfil pré-selecionado encontrado, usando 'bedwars' como fallback.");
-                updateTextureOptions('bedwars'); 
-            }
+            montarPreviewsPorCategoria();
         });
     </script>
 </body>
