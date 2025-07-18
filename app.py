@@ -3,11 +3,11 @@ import zipfile
 import json
 import shutil
 import uuid
-
+import traceback
 from flask import Flask, render_template, request, redirect, session, url_for, send_from_directory
 
 # Importa as funções e variáveis do módulo preview corrigido
-from preview_fixed import (
+from preview_final_v3 import (
     TEXTURE_MAPPING, 
     PROFILES, 
     VANILLA_PREVIEW_MAP_PYTHON,
@@ -116,12 +116,17 @@ def upload_packs():
 
     print(f"Upload concluído. {len(uploaded_packs_data)} packs processados.")
     print(f"Total de tipos de itens únicos: {len(all_item_types_list)}")
-
+    textures_dict = {}
+    if uploaded_packs_data:
+        # Exemplo: pega apenas do PRIMEIRO pack enviado
+        textures_dict = uploaded_packs_data[0].get("available_textures", {})
+        # OU, para mergear de vários packs, pode juntar manualmente se seu JS espera tudo junto
     return render_template('selection.html', 
                            uploaded_packs_data=uploaded_packs_data, 
                            profiles=PROFILES,
                            all_item_types=all_item_types_list,
-                           vanilla_preview_map_json_string=vanilla_preview_map_json_string)
+                           vanilla_preview_map_json_string=vanilla_preview_map_json_string,
+                           textures_dict=textures_dict)
 
 # --- Rota para Gerar o Pack Personalizado ---
 @app.route('/generate', methods=['POST'])
@@ -223,6 +228,7 @@ def generate_pack():
                                     continue
                         except Exception as e:
                             print(f"Erro ao ler do default.zip: {e}")
+                            traceback.print_exc()
                     
                     # Fallback para vanilla_previews
                     vanilla_filename = os.path.basename(original_internal_path)
@@ -266,6 +272,7 @@ def generate_pack():
 
     except Exception as e:
         print(f"ERRO ao gerar o pack combinado: {e}")
+        traceback.print_exc()
         return render_template('selection.html', 
                                uploaded_packs_data=session.get('uploaded_packs_data', []),
                                profiles=PROFILES,

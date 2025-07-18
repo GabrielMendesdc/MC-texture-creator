@@ -4,6 +4,7 @@ import json
 import shutil
 import uuid
 import re
+import traceback
 from PIL import Image, ImageSequence, ImageDraw
 from flask import url_for
 
@@ -122,7 +123,7 @@ TEXTURE_MAPPING = {
     # Itens Específicos
     "Arco": {"paths": ["item/bow_pulling_0.png", "items/bow_pulling_0.png", "item/bow_pulling_1.png", "items/bow_pulling_1.png", "item/bow_pulling_2.png", "items/bow_pulling_2.png", "item/bow_standby.png", "items/bow_standby.png"]},
     "Flecha": {"paths": ["item/arrow.png", "items/arrow.png"]},
-    "Esfera de Fogo": {"paths": ["item/fireball.png", "items/fireball.png"], "is_animated": True}, 
+    "Esfera de Fogo": {"paths": ["item/fireball.png", "items/fireball.png", "entity/fireball.png", "textures/entity/fireball.png"], "is_animated": True}, 
     "Creme de Magma": {"paths": ["item/magma_cream.png", "items/magma_cream.png"]},
     "Olho do Fim": {"paths": ["item/ender_eye.png", "items/ender_eye.png"]},
     "Garrafa de XP": {"paths": ["item/experience_bottle.png", "items/experience_bottle.png"]},
@@ -173,7 +174,7 @@ PROFILES = {
 VANILLA_PREVIEW_MAP_PYTHON = {}
 
 # --- Sistema de Default.zip ---
-DEFAULT_ZIP_PATH = 'default.zip'  # Caminho para o default.zip no servidor
+DEFAULT_ZIP_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "default.zip")  # Caminho para o default.zip no servidor
 DEFAULT_TEXTURES_CACHE = {}  # Cache das texturas do default.zip
 _default_zip_loaded = False
 
@@ -182,32 +183,32 @@ def format_minecraft_text(text):
     # Dicionário de cores do Minecraft para códigos hexadecimais
     # https://minecraft.fandom.com/wiki/Formatting_codes#Color_codes
     color_map = {
-        '0': '#000000', # Black
-        '1': '#0000AA', # Dark Blue
-        '2': '#00AA00', # Dark Green
-        '3': '#00AAAA', # Dark Aqua
-        '4': '#AA0000', # Dark Red
-        '5': '#AA00AA', # Dark Purple
-        '6': '#FFAA00', # Gold
-        '7': '#AAAAAA', # Gray
-        '8': '#555555', # Dark Gray
-        '9': '#5555FF', # Blue
-        'a': '#55FF55', # Green
-        'b': '#55FFFF', # Aqua
-        'c': '#FF5555', # Red
-        'd': '#FF55FF', # Light Purple
-        'e': '#FFFF55', # Yellow
-        'f': '#FFFFFF', # White
+        "0": "#000000", # Black
+        "1": "#0000AA", # Dark Blue
+        "2": "#00AA00", # Dark Green
+        "3": "#00AAAA", # Dark Aqua
+        "4": "#AA0000", # Dark Red
+        "5": "#AA00AA", # Dark Purple
+        "6": "#FFAA00", # Gold
+        "7": "#AAAAAA", # Gray
+        "8": "#555555", # Dark Gray
+        "9": "#5555FF", # Blue
+        "a": "#55FF55", # Green
+        "b": "#55FFFF", # Aqua
+        "c": "#FF5555", # Red
+        "d": "#FF55FF", # Light Purple
+        "e": "#FFFF55", # Yellow
+        "f": "#FFFFFF", # White
     }
     
     # Dicionário para estilos especiais (bold, italic, etc.)
     style_map = {
-        'l': 'font-weight: bold;',      # Bold
-        'm': 'text-decoration: line-through;', # Strikethrough
-        'n': 'text-decoration: underline;', # Underline
-        'o': 'font-style: italic;',     # Italic
-        'k': 'text-transform: uppercase;', # Obfuscated (não implementável com CSS simples, usar uppercase como fallback)
-        'r': 'color: #FFFFFF; font-weight: normal; text-decoration: none; font-style: normal;', # Reset
+        "l": "font-weight: bold;",      # Bold
+        "m": "text-decoration: line-through;", # Strikethrough
+        "n": "text-decoration: underline;", # Underline
+        "o": "font-style: italic;",     # Italic
+        "k": "text-transform: uppercase;", # Obfuscated (não implementável com CSS simples, usar uppercase como fallback)
+        "r": "color: #FFFFFF; font-weight: normal; text-decoration: none; font-style: normal;", # Reset
     }
 
     # Substitui & ou § por <span class="mc-color-X">
@@ -216,21 +217,21 @@ def format_minecraft_text(text):
     def replace_code(match):
         code = match.group(1).lower()
         if code in color_map:
-            return f'<span style="color: {color_map[code]};">'
+            return f"<span style=\"color: {color_map[code]};\">"
         elif code in style_map:
-            return f'<span style="{style_map[code]}">'
+            return f"<span style=\"{style_map[code]}\">"
         return match.group(0) # Retorna o match original se não for um código válido
 
     # Primeiro, substitui os códigos de formatação por tags <span>
     # Usa re.sub para substituir todas as ocorrências
-    formatted_text = re.sub(r'[&§]([0-9a-fk-or])', replace_code, text)
+    formatted_text = re.sub(r"[&§]([0-9a-fk-or])", replace_code, text)
     
     # Garante que todas as tags <span> abertas sejam fechadas no final
     # Isso é um hack simples, pode não ser perfeito para aninhamento complexo,
     # mas funciona para a maioria dos casos de nomes de packs.
-    open_spans = formatted_text.count('<span')
-    close_spans = formatted_text.count('</span>')
-    formatted_text += '</span>' * (open_spans - close_spans)
+    open_spans = formatted_text.count("<span")
+    close_spans = formatted_text.count("</span>")
+    formatted_text += "</span>" * (open_spans - close_spans)
 
     return formatted_text
 
@@ -250,24 +251,24 @@ def add_border_to_image(image_path, border_color, border_width=1):
         # Abre a imagem original
         with Image.open(image_path) as img:
             # Converte para RGBA se necessário
-            if img.mode != 'RGBA':
-                img = img.convert('RGBA')
+            if img.mode != "RGBA":
+                img = img.convert("RGBA")
             
             # Calcula o novo tamanho com a borda
             new_width = img.width + (border_width * 2)
             new_height = img.height + (border_width * 2)
             
             # Cria uma nova imagem com a borda
-            bordered_img = Image.new('RGBA', (new_width, new_height), (0, 0, 0, 0))
+            bordered_img = Image.new("RGBA", (new_width, new_height), (0, 0, 0, 0))
             
             # Desenha a borda
             draw = ImageDraw.Draw(bordered_img)
             
             # Converte cor se for string
             if isinstance(border_color, str):
-                if border_color == 'green':
+                if border_color == "green":
                     border_color = (0, 255, 0, 255)
-                elif border_color == 'red':
+                elif border_color == "red":
                     border_color = (255, 0, 0, 255)
                 else:
                     border_color = (128, 128, 128, 255)
@@ -280,13 +281,14 @@ def add_border_to_image(image_path, border_color, border_width=1):
             bordered_img.paste(img, (border_width, border_width), img)
             
             # Salva a nova imagem
-            bordered_path = image_path.replace('.png', '_bordered.png')
+            bordered_path = image_path.replace(".png", "_bordered.png")
             bordered_img.save(bordered_path)
             
             return bordered_path
             
     except Exception as e:
         print(f"Erro ao adicionar borda à imagem {image_path}: {e}")
+        traceback.print_exc()
         return image_path  # Retorna o caminho original se falhar
 
 # Função para recortar ícones de coração e fome do sprite sheet icons.png
@@ -296,7 +298,7 @@ def crop_heart_hunger_smart(icons_png_path, icon_type, pack_preview_dir, pack_up
     
     Args:
         icons_png_path: Caminho para o arquivo icons.png
-        icon_type: Tipo do ícone ('heart_full', 'hunger_full', etc.)
+        icon_type: Tipo do ícone ("heart_full", "hunger_full", etc.)
         pack_preview_dir: Diretório onde salvar o ícone recortado
         pack_upload_id: ID do pack para nomear o arquivo
     
@@ -307,20 +309,24 @@ def crop_heart_hunger_smart(icons_png_path, icon_type, pack_preview_dir, pack_up
         # Coordenadas dos ícones no sprite sheet icons.png (256x256)
         # Estas coordenadas são baseadas no layout padrão do Minecraft
         icon_coords = {
-            'heart_full': (52, 0, 61, 9),      # Coração cheio
-            'heart_half': (61, 0, 70, 9),      # Meio coração
-            'heart_empty': (16, 0, 25, 9),     # Coração vazio
-            'hunger_full': (52, 27, 61, 36),   # Fome cheia
-            'hunger_half': (61, 27, 70, 36),   # Meia fome
-            'hunger_empty': (16, 27, 25, 36),  # Fome vazia
+            "heart_full": (52, 0, 61, 9),      # Coração cheio
+            "heart_half": (61, 0, 70, 9),      # Meio coração
+            "heart_empty": (16, 0, 25, 9),     # Coração vazio
+            "hunger_full": (52, 27, 61, 36),   # Fome cheia
+            "hunger_half": (61, 27, 70, 36),   # Meia fome
+            "hunger_empty": (16, 27, 25, 36),  # Fome vazia
         }
         
         if icon_type not in icon_coords:
-            print(f"Tipo de ícone '{icon_type}' não suportado")
+            print(f"Tipo de ícone \'{icon_type}\' não suportado")
             return None
             
         # Abre a imagem icons.png
         with Image.open(icons_png_path) as img:
+            # Converte para RGBA para garantir compatibilidade
+            if img.mode != "RGBA":
+                img = img.convert("RGBA")
+
             # Recorta o ícone usando as coordenadas
             left, top, right, bottom = icon_coords[icon_type]
             cropped_icon = img.crop((left, top, right, bottom))
@@ -334,7 +340,7 @@ def crop_heart_hunger_smart(icons_png_path, icon_type, pack_preview_dir, pack_up
             cropped_icon.save(output_path)
             
             # Retorna a URL para o ícone recortado
-            return url_for('temp_previews', filename=f'{pack_upload_id}/{output_filename}')
+            return url_for("temp_previews", filename=f"{pack_upload_id}/{output_filename}")
             
     except Exception as e:
         print(f"Erro ao recortar ícone {icon_type}: {e}")
@@ -355,16 +361,20 @@ def generate_animated_gif(png_path, mcmeta_path, output_path):
     """
     try:
         # Lê o arquivo .mcmeta para obter informações de animação
-        with open(mcmeta_path, 'r') as f:
+        with open(mcmeta_path, "r") as f:
             mcmeta_data = json.load(f)
         
-        animation_info = mcmeta_data.get('animation', {})
-        frame_time = animation_info.get('frametime', 1)  # Tempo por frame em ticks (1 tick = 1/20 segundo)
-        interpolate = animation_info.get('interpolate', False)
-        frames_info = animation_info.get('frames', [])
+        animation_info = mcmeta_data.get("animation", {})
+        frame_time = animation_info.get("frametime", 1)  # Tempo por frame em ticks (1 tick = 1/20 segundo)
+        interpolate = animation_info.get("interpolate", False)
+        frames_info = animation_info.get("frames", [])
         
         # Abre a imagem PNG
         with Image.open(png_path) as img:
+            # Converte para RGBA para garantir compatibilidade
+            if img.mode != "RGBA":
+                img = img.convert("RGBA")
+
             width, height = img.size
             
             # Calcula o tamanho de cada frame (assumindo que são quadrados)
@@ -379,8 +389,8 @@ def generate_animated_gif(png_path, mcmeta_path, output_path):
             frames = []
             for i, frame_info in enumerate(frames_info):
                 if isinstance(frame_info, dict):
-                    frame_index = frame_info.get('index', i)
-                    frame_duration = frame_info.get('time', frame_time)
+                    frame_index = frame_info.get("index", i)
+                    frame_duration = frame_info.get("time", frame_time)
                 else:
                     frame_index = frame_info
                     frame_duration = frame_time
@@ -409,11 +419,11 @@ def generate_animated_gif(png_path, mcmeta_path, output_path):
                     loop=0,  # Loop infinito
                     optimize=True
                 )
-                
+                print(f"[DEBUG GIF] GIF salvo em: {output_path}")
                 return output_path
             
     except Exception as e:
-        print(f"Erro ao gerar GIF animado: {e}")
+        print(f"[DEBUG GIF] Erro ao gerar GIF animado para {png_path}: {e}")
         return None
 
 def load_default_zip_textures(app_root_path):
@@ -431,7 +441,7 @@ def load_default_zip_textures(app_root_path):
     if _default_zip_loaded:
         return True
     
-    default_zip_full_path = os.path.join(app_root_path, DEFAULT_ZIP_PATH)
+    default_zip_full_path = DEFAULT_ZIP_PATH # Já é o caminho completo
     
     if not os.path.exists(default_zip_full_path):
         print(f"AVISO: default.zip não encontrado em {default_zip_full_path}")
@@ -440,37 +450,46 @@ def load_default_zip_textures(app_root_path):
     print(f"Carregando texturas do default.zip: {default_zip_full_path}")
     
     try:
-        with zipfile.ZipFile(default_zip_full_path, 'r') as default_zf:
+        with zipfile.ZipFile(default_zip_full_path, "r") as default_zf:
             all_members = default_zf.namelist()
-            print('all_members:', all_members)
             
             # Processa cada textura mapeada
             for friendly_name, item_info in TEXTURE_MAPPING.items():
                 # Procura por qualquer um dos caminhos possíveis para esta textura
-                for texture_path in item_info['paths']:
-                    full_path = f"assets/minecraft/textures/{texture_path}"
-                    
+                for texture_path in item_info["paths"]:
+                    # Garante que o caminho interno do ZIP comece com "assets/minecraft/textures/"
+                    # e remova qualquer prefixo duplicado
+                    if texture_path.startswith("assets/minecraft/textures/"):
+                        full_path = texture_path
+                    elif texture_path.startswith("item/") or texture_path.startswith("items/") or \
+                         texture_path.startswith("block/") or texture_path.startswith("blocks/") or \
+                         texture_path.startswith("gui/") or texture_path.startswith("entity/") or texture_path.startswith("textures/entity/"):
+                        full_path = f"assets/minecraft/textures/{texture_path}"
+                    else:
+                        # Caso não tenha prefixo, assume que é um caminho direto dentro de textures/
+                        full_path = f"assets/minecraft/textures/{texture_path}"
+
                     if full_path in all_members:
                         # Lê o conteúdo da textura em memória
                         texture_data = default_zf.read(full_path)
                         
                         DEFAULT_TEXTURES_CACHE[friendly_name] = {
-                            'data': texture_data,
-                            'internal_path': full_path,
-                            'original_filename': os.path.basename(texture_path)
+                            "data": texture_data,
+                            "internal_path": full_path,
+                            "original_filename": os.path.basename(texture_path)
                         }
                         
                         print(f"  -> Carregada textura padrão: {friendly_name}")
                         break  # Encontrou uma textura para este friendly_name
             
             # Processa icons.png se existir
-            icons_path = 'assets/minecraft/textures/gui/icons.png'
+            icons_path = "assets/minecraft/textures/gui/icons.png"
             if icons_path in all_members:
                 icons_data = default_zf.read(icons_path)
-                DEFAULT_TEXTURES_CACHE['_icons_png'] = {
-                    'data': icons_data,
-                    'internal_path': icons_path,
-                    'original_filename': 'icons.png'
+                DEFAULT_TEXTURES_CACHE["_icons_png"] = {
+                    "data": icons_data,
+                    "internal_path": icons_path,
+                    "original_filename": "icons.png"
                 }
                 print(f"  -> Carregado icons.png padrão")
         
@@ -480,6 +499,7 @@ def load_default_zip_textures(app_root_path):
         
     except Exception as e:
         print(f"Erro ao carregar default.zip: {e}")
+        traceback.print_exc()
         return False
 
 def get_default_texture_for_pack(friendly_name, pack_preview_dir, pack_upload_id):
@@ -504,23 +524,26 @@ def get_default_texture_for_pack(friendly_name, pack_preview_dir, pack_upload_id
         preview_filename = f"default_{friendly_name}_{texture_info['original_filename']}"
         preview_dest_path = os.path.join(pack_preview_dir, preview_filename)
         
-        with open(preview_dest_path, 'wb') as dest:
-            dest.write(texture_info['data'])
+        with open(preview_dest_path, "wb") as dest:
+            dest.write(texture_info["data"])
         
         # Adiciona borda vermelha para indicar que é textura padrão
-        bordered_path = add_border_to_image(preview_dest_path, 'red', 2)
+        bordered_path = add_border_to_image(preview_dest_path, "red", 2)
         
         # Usa o arquivo com borda se foi criado com sucesso
         final_filename = os.path.basename(bordered_path)
         
+        print(f"[DEBUG DEFAULT] Textura padrão salva em: {preview_dest_path} -> {bordered_path}")
+
         return {
-            'static_url_path': url_for('temp_previews', filename=f'{pack_upload_id}/{final_filename}'),
-            'original_internal_path': texture_info['internal_path'],
-            'is_default': True
+            "static_url_path": url_for("temp_previews", filename=f"{pack_upload_id}/{final_filename.replace("\\", "/")}"),
+            "original_internal_path": texture_info["internal_path"],
+            "is_default": True
         }
         
     except Exception as e:
         print(f"Erro ao obter textura padrão para {friendly_name}: {e}")
+        traceback.print_exc()
         return None
 
 def get_default_icons_for_pack(pack_preview_dir, pack_upload_id):
@@ -534,40 +557,40 @@ def get_default_icons_for_pack(pack_preview_dir, pack_upload_id):
     Returns:
         Dicionário com ícones processados
     """
-    if '_icons_png' not in DEFAULT_TEXTURES_CACHE:
+    if "_icons_png" not in DEFAULT_TEXTURES_CACHE:
         return {}
     
     try:
-        icons_info = DEFAULT_TEXTURES_CACHE['_icons_png']
+        icons_info = DEFAULT_TEXTURES_CACHE["_icons_png"]
         
         # Salva o icons.png temporariamente
         temp_icons_path = os.path.join(pack_preview_dir, f"default_icons_source.png")
-        with open(temp_icons_path, 'wb') as dest:
-            dest.write(icons_info['data'])
+        with open(temp_icons_path, "wb") as dest:
+            dest.write(icons_info["data"])
         
         # Processa os ícones
         processed_icons = {}
         for friendly_name, item_info in TEXTURE_MAPPING.items():
-            if item_info.get('is_icon_sprite') and item_info.get('icon_type'):
+            if item_info.get("is_icon_sprite") and item_info.get("icon_type"):
                 cropped_url = crop_heart_hunger_smart(
                     temp_icons_path,
-                    item_info['icon_type'],
+                    item_info["icon_type"],
                     pack_preview_dir,
                     f"default_{pack_upload_id}"
                 )
                 if cropped_url:
                     # Adiciona borda vermelha ao ícone padrão
-                    icon_filename = cropped_url.split('/')[-1]
+                    icon_filename = cropped_url.split("/")[-1]
                     icon_path = os.path.join(pack_preview_dir, icon_filename)
                     
                     if os.path.exists(icon_path):
-                        bordered_path = add_border_to_image(icon_path, 'red', 1)
+                        bordered_path = add_border_to_image(icon_path, "red", 1)
                         bordered_filename = os.path.basename(bordered_path)
                         
                         processed_icons[friendly_name] = {
-                            'static_url_path': url_for('temp_previews', filename=f'{pack_upload_id}/{bordered_filename}'),
-                            'original_internal_path': icons_info['internal_path'],
-                            'is_default': True
+                            "static_url_path": url_for("temp_previews", filename=f"{pack_upload_id}/{bordered_filename.replace("\\", "/")}"),
+                            "original_internal_path": icons_info["internal_path"],
+                            "is_default": True
                         }
         
         # Remove o arquivo temporário
@@ -578,6 +601,7 @@ def get_default_icons_for_pack(pack_preview_dir, pack_upload_id):
         
     except Exception as e:
         print(f"Erro ao processar ícones padrão: {e}")
+        traceback.print_exc()
         return {}
 
 # --- Função para analisar um Resource Pack (VERSÃO CORRIGIDA COM PRIORIDADE) ---
@@ -594,7 +618,7 @@ def analyze_resource_pack(zip_path, pack_upload_id, temp_preview_folder):
     Returns:
         Dicionário com informações do pack ou None se falhar
     """
-    pack_name = os.path.basename(zip_path).replace('.zip', '')
+    pack_name = os.path.basename(zip_path).replace(".zip", "")
     user_textures = {}  # Texturas encontradas no pack do usuário
 
     pack_preview_dir = os.path.join(temp_preview_folder, pack_upload_id)
@@ -603,16 +627,16 @@ def analyze_resource_pack(zip_path, pack_upload_id, temp_preview_folder):
     print(f"\n--- Iniciando análise para pack: {zip_path} (ID: {pack_upload_id}) ---")
 
     try:
-        with zipfile.ZipFile(zip_path, 'r') as zf:
+        with zipfile.ZipFile(zip_path, "r") as zf:
             # Tenta ler pack.mcmeta para um nome mais amigável
             try:
-                with zf.open('pack.mcmeta') as mcmeta_file:
-                    mcmeta_content = json.loads(mcmeta_file.read().decode('utf-8'))
-                    if 'pack' in mcmeta_content and 'description' in mcmeta_content['pack']:
-                        desc = mcmeta_content['pack']['description']
+                with zf.open("pack.mcmeta") as mcmeta_file:
+                    mcmeta_content = json.loads(mcmeta_file.read().decode("utf-8"))
+                    if "pack" in mcmeta_content and "description" in mcmeta_content["pack"]:
+                        desc = mcmeta_content["pack"]["description"]
                         # Se a descrição for um objeto JSON com texto e formatação, extraia o texto
-                        if isinstance(desc, dict) and 'text' in desc:
-                            pack_name = desc['text'].strip()
+                        if isinstance(desc, dict) and "text" in desc:
+                            pack_name = desc["text"].strip()
                         elif isinstance(desc, str):
                             pack_name = desc.strip()
                         # Formata o nome do pack com cores do Minecraft
@@ -622,69 +646,70 @@ def analyze_resource_pack(zip_path, pack_upload_id, temp_preview_folder):
                 pass
 
             all_zip_members = zf.namelist()
-            print(f"Total de arquivos no ZIP: {len(all_zip_members)}")
 
             # Processa icons.png primeiro se existir
-            icons_png_path = 'assets/minecraft/textures/gui/icons.png'
+            icons_png_path = "assets/minecraft/textures/gui/icons.png"
             if icons_png_path in all_zip_members:
                 print(f"Detectado {icons_png_path}. Processando ícones de sprite sheet.")
                 temp_icons_path = os.path.join(pack_preview_dir, f"{pack_upload_id}_icons_source.png")
-                with zf.open(icons_png_path) as source, open(temp_icons_path, 'wb') as dest:
+                with zf.open(icons_png_path) as source, open(temp_icons_path, "wb") as dest:
                     shutil.copyfileobj(source, dest)
                 
                 for friendly_name, item_info in TEXTURE_MAPPING.items():
-                    if item_info.get('is_icon_sprite') and item_info.get('icon_type') and icons_png_path in item_info['paths']:
-                        print(f"Tentando recortar {friendly_name} (tipo: {item_info['icon_type']}) de {icons_png_path}")
-                        cropped_url = crop_heart_hunger_smart(
-                            temp_icons_path,
-                            item_info['icon_type'],
-                            pack_preview_dir,
-                            pack_upload_id
-                        )
-                        if cropped_url:
-                            # Adiciona borda verde para indicar que é textura do usuário
-                            icon_filename = cropped_url.split('/')[-1]
-                            icon_path = os.path.join(pack_preview_dir, icon_filename)
-                            
-                            if os.path.exists(icon_path):
-                                bordered_path = add_border_to_image(icon_path, 'green', 1)
-                                bordered_filename = os.path.basename(bordered_path)
+                    if item_info.get("is_icon_sprite") and item_info.get("icon_type"):
+                        # Verifica se o icons.png do pack do usuário é o que estamos procurando
+                        # Isso evita processar icons.png de outros lugares ou se o mapeamento estiver errado
+                        if icons_png_path in item_info["paths"]:
+                            print(f"Tentando recortar {friendly_name} (tipo: {item_info['icon_type']}) de {icons_png_path}")
+                            cropped_url = crop_heart_hunger_smart(
+                                temp_icons_path,
+                                item_info["icon_type"],
+                                pack_preview_dir,
+                                pack_upload_id
+                            )
+                            if cropped_url:
+                                # Adiciona borda verde para indicar que é textura do usuário
+                                icon_filename = cropped_url.split("/")[-1]
+                                icon_path = os.path.join(pack_preview_dir, icon_filename)
                                 
-                                user_textures[friendly_name] = {
-                                    'static_url_path': url_for('temp_previews', filename=f'{pack_upload_id}/{bordered_filename}'),
-                                    'original_internal_path': icons_png_path,
-                                    'is_default': False
-                                }
-                                print(f"  -> Recorte de {friendly_name} SUCESSO. URL: {user_textures[friendly_name]['static_url_path']}")
-                        else:
-                            print(f"  -> Recorte de {friendly_name} FALHA.")
+                                if os.path.exists(icon_path):
+                                    bordered_path = add_border_to_image(icon_path, "green", 1)
+                                    bordered_filename = os.path.basename(bordered_path)
+                                    
+                                    user_textures[friendly_name] = {
+                                        "static_url_path": url_for("temp_previews", filename=f"{pack_upload_id}/{bordered_filename.replace("\\", "/")}"),
+                                        "original_internal_path": icons_png_path,
+                                        "is_default": False
+                                    }
+                                    print(f"  -> Recorte de {friendly_name} SUCESSO. URL: {user_textures[friendly_name]['static_url_path']}")
+                            else:
+                                print(f"  -> Recorte de {friendly_name} FALHA.")
 
             # Itera sobre os arquivos restantes do ZIP para outras texturas
             for member_path in all_zip_members:
-                if member_path.startswith('assets/minecraft/textures/') and member_path.endswith('.png'):
-                    relative_texture_path = member_path[len('assets/minecraft/textures/'):]
+                # Apenas processa arquivos PNG dentro de assets/minecraft/textures/
+                if member_path.startswith("assets/minecraft/textures/") and member_path.endswith(".png"):
+                    # Remove "assets/minecraft/textures/" do início para obter o caminho relativo
+                    relative_texture_path = member_path[len("assets/minecraft/textures/"):]
 
                     found_friendly_name = False
                     for friendly_name, item_info in TEXTURE_MAPPING.items():
-                        # Verifica se o caminho do membro está nas paths do item_info
-                        if relative_texture_path in item_info['paths'] and not item_info.get('is_icon_sprite'):
-                            # Se já encontramos uma textura para este friendly_name neste pack, pulamos
+                        if relative_texture_path in item_info["paths"] and not item_info.get("is_icon_sprite"):
                             if friendly_name in user_textures:
                                 continue 
 
                             # --- Lógica para Texturas Animadas (com .mcmeta) ---
-                            if item_info.get('is_animated'):
-                                mcmeta_member_path = member_path + '.mcmeta'
+                            if item_info.get("is_animated"):
+                                mcmeta_member_path = member_path + ".mcmeta"
                                 if mcmeta_member_path in zf.namelist():
-                                    print(f"Detectada animação para {friendly_name} ({member_path}). Gerando GIF.")
                                     
                                     # Extrai PNG e MCMETA para temp_previews para serem processados
                                     temp_png_path = os.path.join(pack_preview_dir, f"{pack_upload_id}_{os.path.basename(member_path)}")
                                     temp_mcmeta_path = os.path.join(pack_preview_dir, f"{pack_upload_id}_{os.path.basename(mcmeta_member_path)}")
 
-                                    with zf.open(member_path) as source_png, open(temp_png_path, 'wb') as dest_png:
+                                    with zf.open(member_path) as source_png, open(temp_png_path, "wb") as dest_png:
                                         shutil.copyfileobj(source_png, dest_png)
-                                    with zf.open(mcmeta_member_path) as source_mcmeta, open(temp_mcmeta_path, 'wb') as dest_mcmeta:
+                                    with zf.open(mcmeta_member_path) as source_mcmeta, open(temp_mcmeta_path, "wb") as dest_mcmeta:
                                         shutil.copyfileobj(source_mcmeta, dest_mcmeta)
                                     
                                     # Gera o GIF
@@ -696,49 +721,44 @@ def analyze_resource_pack(zip_path, pack_upload_id, temp_preview_folder):
                                     if generated_gif_path:
                                         # Adiciona borda verde para GIFs do usuário (mais complexo, por enquanto sem borda)
                                         user_textures[friendly_name] = {
-                                            'static_url_path': url_for('temp_previews', filename=f'{pack_upload_id}/{os.path.basename(generated_gif_path)}'),
-                                            'original_internal_path': member_path,
-                                            'is_default': False
+                                            "static_url_path": url_for("temp_previews", filename=f"{pack_upload_id}/{os.path.basename(generated_gif_path).replace("\\", "/")}"),
+                                            "original_internal_path": member_path,
+                                            "is_default": False
                                         }
-                                        print(f"  -> GIF gerado para {friendly_name}. URL: {user_textures[friendly_name]['static_url_path']}")
                                     else:
-                                        print(f"  -> FALHA ao gerar GIF para {friendly_name}. Tentando preview estática.")
                                         # Fallback para imagem estática se o GIF falhar
                                         original_filename = os.path.basename(relative_texture_path)
                                         preview_filename = f"{friendly_name}_{original_filename}"
                                         preview_dest_path = os.path.join(pack_preview_dir, preview_filename)
-                                        with zf.open(member_path) as source, open(preview_dest_path, 'wb') as dest:
+                                        with zf.open(member_path) as source, open(preview_dest_path, "wb") as dest:
                                             shutil.copyfileobj(source, dest)
                                         
                                         # Adiciona borda verde
-                                        bordered_path = add_border_to_image(preview_dest_path, 'green', 2)
+                                        bordered_path = add_border_to_image(preview_dest_path, "green", 2)
                                         bordered_filename = os.path.basename(bordered_path)
                                         
                                         user_textures[friendly_name] = {
-                                            'static_url_path': url_for('temp_previews', filename=f'{pack_upload_id}/{bordered_filename}'),
-                                            'original_internal_path': member_path,
-                                            'is_default': False
+                                            "static_url_path": url_for("temp_previews", filename=f"{pack_upload_id}/{bordered_filename.replace("\\", "/")}"),
+                                            "original_internal_path": member_path,
+                                            "is_default": False
                                         }
-                                        print(f"  -> Preview estática para {friendly_name}. URL: {user_textures[friendly_name]['static_url_path']}")
                                 else:
-                                    print(f"AVISO: {member_path} marcado como animado, mas {mcmeta_member_path} não encontrado. Usando preview estática.")
                                     # Se .mcmeta não existe, trata como estática
                                     original_filename = os.path.basename(relative_texture_path)
                                     preview_filename = f"{friendly_name}_{original_filename}"
                                     preview_dest_path = os.path.join(pack_preview_dir, preview_filename)
-                                    with zf.open(member_path) as source, open(preview_dest_path, 'wb') as dest:
+                                    with zf.open(member_path) as source, open(preview_dest_path, "wb") as dest:
                                         shutil.copyfileobj(source, dest)
                                     
                                     # Adiciona borda verde
-                                    bordered_path = add_border_to_image(preview_dest_path, 'green', 2)
+                                    bordered_path = add_border_to_image(preview_dest_path, "green", 2)
                                     bordered_filename = os.path.basename(bordered_path)
                                     
                                     user_textures[friendly_name] = {
-                                        'static_url_path': url_for('temp_previews', filename=f'{pack_upload_id}/{bordered_filename}'),
-                                        'original_internal_path': member_path,
-                                        'is_default': False
+                                        "static_url_path": url_for("temp_previews", filename=f"{pack_upload_id}/{bordered_filename.replace("\\", "/")}"),
+                                        "original_internal_path": member_path,
+                                        "is_default": False
                                     }
-                                    print(f"  -> Preview estática para {friendly_name}. URL: {user_textures[friendly_name]['static_url_path']}")
                             
                             # --- Lógica para Texturas Estáticas (sem .mcmeta ou não marcadas como animadas) ---
                             else:
@@ -746,35 +766,34 @@ def analyze_resource_pack(zip_path, pack_upload_id, temp_preview_folder):
                                 preview_filename = f"{friendly_name}_{original_filename}"
                                 preview_dest_path = os.path.join(pack_preview_dir, preview_filename)
 
-                                with zf.open(member_path) as source, open(preview_dest_path, 'wb') as dest:
+                                with zf.open(member_path) as source, open(preview_dest_path, "wb") as dest:
                                     shutil.copyfileobj(source, dest)
 
                                 # Adiciona borda verde para indicar que é textura do usuário
-                                bordered_path = add_border_to_image(preview_dest_path, 'green', 2)
+                                bordered_path = add_border_to_image(preview_dest_path, "green", 2)
                                 bordered_filename = os.path.basename(bordered_path)
 
                                 user_textures[friendly_name] = {
-                                    'static_url_path': url_for('temp_previews', filename=f'{pack_upload_id}/{bordered_filename}'),
-                                    'original_internal_path': member_path,
-                                    'is_default': False
+                                    "static_url_path": url_for("temp_previews", filename=f"{pack_upload_id}/{bordered_filename.replace("\\", "/")}"),
+                                    "original_internal_path": member_path,
+                                    "is_default": False
                                 }
                             
                             found_friendly_name = True
                             break # Encontrou um mapeamento para este member_path, vai para o próximo arquivo do ZIP
 
-        print(f"--- Análise finalizada para {pack_name}. Texturas do usuário: {list(user_textures.keys())} ---")
         
     except Exception as e:
-        print(f"ERRO GERAL na análise do pack {zip_path}: {e}")
+        traceback.print_exc()
         if os.path.exists(pack_preview_dir):
             shutil.rmtree(pack_preview_dir)
         return None
 
     return {
-        'id': pack_upload_id,
-        'name': pack_name,
-        'formatted_name': pack_name, # O nome já formatado com cores
-        'available_textures': user_textures  # Apenas texturas do usuário por enquanto
+        "id": pack_upload_id,
+        "name": pack_name,
+        "formatted_name": pack_name, # O nome já formatado com cores
+        "available_textures": user_textures  # Apenas texturas do usuário por enquanto
     }
 
 def analyze_resource_pack_with_defaults(zip_path, pack_upload_id, temp_preview_folder, app_root_path):
@@ -800,7 +819,7 @@ def analyze_resource_pack_with_defaults(zip_path, pack_upload_id, temp_preview_f
     if not pack_result:
         return None
     
-    user_textures = pack_result['available_textures']
+    user_textures = pack_result["available_textures"]
     pack_preview_dir = os.path.join(temp_preview_folder, pack_upload_id)
     
     # Identifica texturas faltantes (que o usuário não enviou)
@@ -808,38 +827,29 @@ def analyze_resource_pack_with_defaults(zip_path, pack_upload_id, temp_preview_f
     for friendly_name in TEXTURE_MAPPING.keys():
         if friendly_name not in user_textures:
             missing_textures.append(friendly_name)
-    
-    print(f"Texturas do usuário encontradas: {len(user_textures)}")
-    print(f"Texturas faltantes (serão preenchidas com padrão): {len(missing_textures)}")
+
     
     # Combina texturas do usuário com texturas padrão para faltantes
     final_textures = user_textures.copy()  # Começa com as texturas do usuário
-    
-    if missing_textures:
-        print(f"Procurando {len(missing_textures)} texturas faltantes no default.zip...")
-        
+
+    if missing_textures:        
         # Adiciona texturas padrão para itens faltantes
         for friendly_name in missing_textures:
             default_texture = get_default_texture_for_pack(friendly_name, pack_preview_dir, pack_upload_id)
             if default_texture:
                 final_textures[friendly_name] = default_texture
-                print(f"  -> Adicionada textura padrão para {friendly_name}")
         
         # Processa ícones padrão se necessário
-        missing_icons = [name for name in missing_textures if TEXTURE_MAPPING.get(name, {}).get('is_icon_sprite')]
+        missing_icons = [name for name in missing_textures if TEXTURE_MAPPING.get(name, {}).get("is_icon_sprite")]
         if missing_icons:
             default_icons = get_default_icons_for_pack(pack_preview_dir, pack_upload_id)
             for friendly_name, icon_info in default_icons.items():
                 if friendly_name in missing_textures:
                     final_textures[friendly_name] = icon_info
-                    print(f"  -> Adicionado ícone padrão para {friendly_name}")
     
     # Atualiza o resultado com as texturas finais (usuário + padrão para faltantes)
-    pack_result['available_textures'] = final_textures
-    
-    print(f"Total de texturas disponíveis: {len(final_textures)}")
-    print(f"  - Do usuário (borda verde): {len(user_textures)}")
-    print(f"  - Padrão (borda vermelha): {len(final_textures) - len(user_textures)}")
+    pack_result["available_textures"] = final_textures
+
     
     return pack_result
 
@@ -915,6 +925,8 @@ def initialize_vanilla_preview_map():
             "Skin Padrão (Alex)": "alex.png",   # Adicionado para a skin padrão
         }
         for friendly_name, filename in _static_vanilla_map_filenames.items():
-            VANILLA_PREVIEW_MAP_PYTHON[friendly_name] = url_for('static', filename=f'vanilla_previews/{filename}')
+            VANILLA_PREVIEW_MAP_PYTHON[friendly_name] = url_for("static", filename=f"vanilla_previews/{filename}")
         _vanilla_preview_map_initialized = True
+
+
 

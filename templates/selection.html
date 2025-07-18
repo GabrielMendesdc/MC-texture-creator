@@ -85,14 +85,6 @@
                     {% endfor %}
                 </div>
 
-                {# NOVO: Campo para o caminho da skin padrão #}
-                <div class="selection-group">
-                    <label for="default_skin_path">Caminho da Skin Padrão (assets/minecraft/textures/entity/):</label>
-                    <input type="text" id="default_skin_path" name="default_skin_path" 
-                           placeholder="Ex: steve.png ou alex.png"
-                           value="steve.png"> {# Valor padrão #}
-                </div>
-
                 <h2>Opções de Textura por Item</h2>
                 <div id="texture_options_container">
                     {# Este bloco será preenchido e atualizado via JavaScript #}
@@ -104,7 +96,9 @@
     </div>
 
     <script>
-        // Passa os dados do Python (Jinja) para o JavaScript
+    // Isto passa o dicionário do Python para o JavaScript
+        const allTextures = {{ textures_dict | tojson }};
+        console.log("allTextures carregado:", allTextures);
         const ALL_PACKS_DATA = {{ uploaded_packs_data | tojson | safe }};
         const ALL_PROFILES = {{ profiles | tojson | safe }};
         const ALL_ITEM_TYPES = {{ all_item_types | tojson | safe }};
@@ -212,13 +206,19 @@
                         html += `<option value="${pack.id}" ${isSelected}>${pack.formatted_name}</option>`;
                     });
 
-                    html += `
-                        </select>
-                        <img id="preview_${itemType.replace(/ /g, '_')}" class="texture-preview" src="${defaultPreviewSrc}" 
-                             alt="${defaultPreviewSrc ? 'Pré-visualização da textura' : 'Nenhuma pré-visualização disponível'}">
-                    </div>`;
+                    Object.keys(allTextures).forEach(itemName => {
+                        const src = allTextures[itemName]?.static_url_path || "";
+                        html += `
+                        <div class="selection-group">
+                            <label>${itemName}</label>
+                            <img class="texture-preview" src="${src}" alt="${itemName}" style="border:2px solid red;">
+                        </div>`;
+                        console.log("Renderizou", itemName, "previewSrc:", src);
+                    });
                 }
             });
+            console.log("HTML FINAL QUE VAI PARA O DOM:\n", html);
+            html += `<img src="https://minecraft.wiki/images/Item_diamond_sword.png">`;
             container.innerHTML = html;
             // Após gerar as opções, atualiza as previews iniciais
             profileItems.forEach(itemType => {

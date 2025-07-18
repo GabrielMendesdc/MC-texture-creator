@@ -109,7 +109,7 @@ h1, h2, h3 {
     width: 128px; /* Tamanho maior para a preview */
     height: 128px;
     border: 1px solid #718096; /* Borda (Tailwind gray-500) */
-    background-color: #2d3748; /* Fundo do preview (Tailwind gray-800) */
+    background-color: #f00; /* vermelho, só pra testar */
     flex-shrink: 0; /* Não encolhe */
     object-fit: contain; /* Garante que a imagem se ajuste sem cortar */
     image-rendering: pixelated; /* Mantém a nitidez das texturas de Minecraft */

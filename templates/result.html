@@ -2,21 +2,19 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Selecionar Texturas</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body class="bg-gray-900 text-gray-100"> <!-- Adicionado classes Tailwind aqui -->
-    <div class="container"> <!-- Adicionado classes Tailwind aqui -->
+<body>
+    <div class="container">
         <h1>Selecione suas Texturas</h1>
         <p>Aqui você veria as opções de blocos, itens, etc., de cada pack.</p>
         <form action="{{ url_for('generate_pack') }}" method="post">
             {% for pack_path in uploaded_packs %}
                 <p>Pack: {{ pack_path }}</p>
-                {% endfor %}
+            {% endfor %}
             <button type="submit">Gerar Pack!</button>
         </form>
-        <script src="{{ url_for('static', filename='js/script.js') }}"></script>
     </div>
 </body>
 </html>
