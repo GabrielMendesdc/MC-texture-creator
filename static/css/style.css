@@ -85,7 +85,7 @@ h1, h2, h3 {
     /* display: block; -- Removido, pois flexbox já cuida disso */
     margin-bottom: 0; /* Ajustado para flexbox */
     font-weight: bold;
-    flex-basis: 120px; /* Largura fixa para labels */
+    flex-basis: 30px; /* Largura fixa para labels */
     flex-shrink: 0;
     color: #e2e8f0; /* Cor do texto do label */
 }

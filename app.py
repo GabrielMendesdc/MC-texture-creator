@@ -12,7 +12,8 @@ from preview_final_v3 import (
     VANILLA_PREVIEW_MAP_PYTHON,
     analyze_resource_pack_with_defaults,
     initialize_vanilla_preview_map,
-    load_default_zip_textures
+    load_default_zip_textures,
+    format_minecraft_text
 )
 
 from dotenv import load_dotenv
