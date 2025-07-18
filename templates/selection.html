@@ -6,9 +6,9 @@
     <title>Selecione suas Texturas - Minecraft Texture Mixer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         /* Estilos para as cores do Minecraft */
-        /* Estas cores são as mesmas definidas em format_minecraft_text no app.py */
         .mc-color-0 { color: #000000; } /* Black */
         .mc-color-1 { color: #0000AA; } /* Dark Blue */
         .mc-color-2 { color: #00AA00; } /* Dark Green */
@@ -31,27 +31,17 @@
         .mc-strikethrough { text-decoration: line-through; }
         .mc-underline { text-decoration: underline; }
         .mc-italic { font-style: italic; }
-        .mc-obfuscated { 
-            /* Obfuscated é difícil com CSS puro. */
-            /* Você pode tentar uma fonte que simule ou usar um fallback como: */
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            animation: obfuscate 0.5s infinite alternate; /* Exemplo de animação simples */
-        }
-        /* Exemplo de keyframes para animação obfuscada */
-        @keyframes obfuscate {
-            from { opacity: 1; }
-            to { opacity: 0.5; letter-spacing: 0.2em; }
+
+        /* Custom Select Box Styles */
+        .custom-select {
+            position: relative;
+            display: inline-block;
+            width: 300px;
+            margin: 5px 0;
         }
 
-        .mc-reset {
-            color: inherit; /* Volta para a cor do elemento pai */
-            font-weight: normal;
-            text-decoration: none;
-            font-style: normal;
-            text-transform: none;
-            letter-spacing: normal;
-            animation: none; /* Desativa a animação de obfuscate */
+        button[type="submit"]:hover {
+            background-color: #45a049;
         }
     </style>
 </head>
@@ -63,7 +53,6 @@
         {% if uploaded_packs_data %}
             <ul class="pack-list">
                 {% for pack in uploaded_packs_data %}
-                    {# Exibe o nome já formatado, sem o ID #}
                     <li>{{ pack.formatted_name | safe }}</li> 
                 {% endfor %}
             </ul>
@@ -74,7 +63,7 @@
         <div class="selection-area">
             <form action="{{ url_for('generate_pack') }}" method="post">
                 <div id="texture_options_container">
-                    {# Este bloco será preenchido e atualizado via JavaScript #}
+                    <!-- Este bloco será preenchido via JavaScript -->
                 </div>
                 <button type="submit">Gerar Pack Personalizado</button>
             </form>
@@ -86,14 +75,13 @@
         const allTextures = {{ textures_dict | tojson }};
         const VANILLA_PREVIEW_MAP = {{ vanilla_preview_map_json_string | safe }};
 
-        // Mapeamento das categorias com base nos nomes do TEXTURE_MAPPING
+        // Mapeamento das categorias
         const categorias = {
             blocos: [
                 "Lã", "Madeira (Tábuas)", "Pedra"
             ],
             minerios: [
                 "Minério de Diamante", "Minério de Esmeralda", "Esmeralda (Item)"
-                // Você pode adicionar manualmente outros ores e ingots aqui
             ],
             ferramentas: [
                 "Espada de Diamante", "Espada de Ferro", "Espada de Ouro", "Espada de Madeira", "Espada de Pedra",
@@ -111,89 +99,300 @@
             ]
         };
 
+        // Função para truncar texto
         function truncateText(text, maxLength = 25) {
-            if (text.length > maxLength) {
-                return text.slice(0, maxLength - 3) + '...';
-            }
-            return text;
-            }
-
-        function createSelectWithTruncatedOptions(selectId, options, defaultSelectedId) {
-            const truncateText = (text, maxLength = 25) =>
-                text.length > maxLength ? text.slice(0, maxLength - 3) + '...' : text;
-
-            let html = `<select id="${selectId}" name="${selectId}">`;
-
-            options.forEach(opt => {
-                const selected = opt.id === defaultSelectedId ? 'selected' : '';
-                const displayText = truncateText(opt.formatted_name || opt.name || 'Pack');
-                html += `<option value="${opt.id}" ${selected}>${displayText}</option>`;
-            });
-
-            html += '</select>';
-            return html;
-            }
-            
-            function renderizarGrupo(titulo, listaItens) {
-                let grupoHtml = `<div class="item-group"><h3>${titulo}</h3><div class="group-grid">`;
-
-                listaItens.forEach(itemType => {
-                    let packsWithItem = ALL_PACKS_DATA.filter(pack =>
-                        pack.available_textures && pack.available_textures[itemType]
-                    );
-
-                    const temPackComItem = packsWithItem.length > 0;
-
-                    let opcaoDefault = {
-                        id: 'default',
-                        name: 'Minecraft Padrão (Vanilla)',
-                        static_url_path: VANILLA_PREVIEW_MAP[itemType] || ''
-                    };
-
-                    packsWithItem.sort((a, b) => (a.formatted_name || a.name || '').localeCompare(b.formatted_name || b.name || ''));
-
-                    let opcoes = [];
-
-                    if (temPackComItem) {
-                        opcoes = [...packsWithItem];
-                    } else {
-                        opcoes = [opcaoDefault];
-                    }
-
-                    const selectName = `select_${itemType.replace(/ /g, '_')}`;
-
-                    grupoHtml += `
-                        <div class="selection-group">
-                            <label for="${selectName}">${itemType}:</label>
-                            <select id="${selectName}" name="${selectName}" onchange="updatePreview('${selectName}')">
-                                ${opcoes.map(pack => {
-                                    const displayName = pack.formatted_name || pack.name || pack.id || 'Pack';
-                                    const displayText = truncateText(displayName, 25);
-                                    const selectedAttr = pack.id === (temPackComItem ? packsWithItem[0].id : 'default') ? 'selected' : '';
-                                    return `<option value="${pack.id}" ${selectedAttr}>${displayText}</option>`;
-                                }).join('')}
-                            </select>
-                            <img id="preview_${selectName}" class="texture-preview" src="${temPackComItem ? packsWithItem[0].available_textures[itemType].static_url_path : opcaoDefault.static_url_path}" alt="${itemType}">
-                        </div>
-                    `;
-                });
-
-                grupoHtml += '</div></div>';
-                return grupoHtml;
-            }
-
-
-        function montarPreviewsPorCategoria() {
-            const container = document.getElementById("texture_options_container");
-            let html = "";
-            const htmlBlocos = renderizarGrupo("Blocos", categorias.blocos);
-            const htmlMinerios = renderizarGrupo("Minérios", categorias.minerios);
-            const htmlFerramentas = renderizarGrupo("Ferramentas", categorias.ferramentas);
-            const htmlArmaduras = renderizarGrupo("Armaduras", categorias.armaduras);
-            container.innerHTML = htmlBlocos + htmlMinerios + htmlFerramentas + htmlArmaduras;
+            if (!text) return '';
+            return text.length > maxLength ? text.slice(0, maxLength - 3) + '...' : text;
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
+        // Função para converter códigos de cor do Minecraft para HTML
+        function minecraftColorToHtml(text) {
+            if (!text) return '';
+            
+            const colorMap = {
+                '0': '#000000', '1': '#0000AA', '2': '#00AA00', '3': '#00AAAA',
+                '4': '#AA0000', '5': '#AA00AA', '6': '#FFAA00', '7': '#AAAAAA',
+                '8': '#555555', '9': '#5555FF', 'a': '#55FF55', 'b': '#55FFFF',
+                'c': '#FF5555', 'd': '#FF55FF', 'e': '#FFFF55', 'f': '#FFFFFF'
+            };
+            
+            const formatMap = {
+                'l': 'font-weight: bold;',
+                'o': 'font-style: italic;',
+                'n': 'text-decoration: underline;',
+                'm': 'text-decoration: line-through;'
+            };
+            
+            let html = '';
+            let currentStyles = [];
+            
+            for (let i = 0; i < text.length; i++) {
+                if (text[i] === '§' && i + 1 < text.length) {
+                    const code = text[i + 1].toLowerCase();
+                    
+                    if (colorMap[code]) {
+                        // Fecha span anterior se existir
+                        if (currentStyles.length > 0) {
+                            html += '</span>';
+                        }
+                        // Abre novo span com a cor
+                        html += `<span style="color: ${colorMap[code]};">`;
+                        currentStyles = [`color: ${colorMap[code]}`];
+                        i++;
+                        continue;
+                    } else if (formatMap[code]) {
+                        // Adiciona formatação
+                        currentStyles.push(formatMap[code]);
+                        if (currentStyles.length === 1) {
+                            html += `<span style="${currentStyles.join(' ')}">`;
+                        } else {
+                            html += `</span><span style="${currentStyles.join(' ')}">`;
+                        }
+                        i++;
+                        continue;
+                    } else if (code === 'r') {
+                        // Reset
+                        if (currentStyles.length > 0) {
+                            html += '</span>';
+                            currentStyles = [];
+                        }
+                        i++;
+                        continue;
+                    }
+                }
+                html += text[i];
+            }
+            
+            // Fecha span final se existir
+            if (currentStyles.length > 0) {
+                html += '</span>';
+            }
+            
+            return html;
+        }
+
+        // Classe para o Custom Select
+        class CustomSelect {
+            constructor(containerId, options, selectedValue, onChangeCallback) {
+                this.containerId = containerId;
+                this.options = options;
+                this.selectedValue = selectedValue;
+                this.onChangeCallback = onChangeCallback;
+                this.isOpen = false;
+                this.render();
+                this.bindEvents();
+            }
+
+            render() {
+                const container = document.getElementById(this.containerId);
+                if (!container) return;
+
+                const selectedOption = this.options.find(opt => opt.value === this.selectedValue) || this.options[0];
+                const selectedText = selectedOption ? selectedOption.label : 'Selecione...';
+
+                container.innerHTML = `
+                    <div class="custom-select">
+                        <div class="custom-select-button" id="${this.containerId}_button">
+                            <span class="custom-select-text">${minecraftColorToHtml(truncateText(selectedText, 25))}</span>
+                            <span class="custom-select-arrow">▼</span>
+                        </div>
+                        <div class="custom-select-dropdown" id="${this.containerId}_dropdown">
+                            ${this.options.map(option => `
+                                <div class="custom-select-option ${option.value === this.selectedValue ? 'selected' : ''}" 
+                                     data-value="${option.value}">
+                                    ${minecraftColorToHtml(truncateText(option.label, 25))}
+                                </div>
+                            `).join('')}
+                        </div>
+                        <input type="hidden" name="${this.containerId}" value="${this.selectedValue}">
+                    </div>
+                `;
+            }
+
+            bindEvents() {
+                const button = document.getElementById(`${this.containerId}_button`);
+                const dropdown = document.getElementById(`${this.containerId}_dropdown`);
+                
+                if (!button || !dropdown) return;
+
+                // Toggle dropdown
+                button.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.toggleDropdown();
+                });
+
+                // Select option
+                dropdown.addEventListener('click', (e) => {
+                    const option = e.target.closest('.custom-select-option');
+                    if (option) {
+                        const value = option.dataset.value;
+                        this.selectOption(value);
+                    }
+                });
+
+                // Close dropdown when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest(`#${this.containerId}`)) {
+                        this.closeDropdown();
+                    }
+                });
+            }
+
+            toggleDropdown() {
+                const dropdown = document.getElementById(`${this.containerId}_dropdown`);
+                const button = document.getElementById(`${this.containerId}_button`);
+                
+                if (this.isOpen) {
+                    this.closeDropdown();
+                } else {
+                    this.openDropdown();
+                }
+            }
+
+            openDropdown() {
+                const dropdown = document.getElementById(`${this.containerId}_dropdown`);
+                const button = document.getElementById(`${this.containerId}_button`);
+                
+                dropdown.style.display = 'block';
+                button.classList.add('active');
+                this.isOpen = true;
+            }
+
+            closeDropdown() {
+                const dropdown = document.getElementById(`${this.containerId}_dropdown`);
+                const button = document.getElementById(`${this.containerId}_button`);
+                
+                dropdown.style.display = 'none';
+                button.classList.remove('active');
+                this.isOpen = false;
+            }
+
+            selectOption(value) {
+                const selectedOption = this.options.find(opt => opt.value === value);
+                if (!selectedOption) return;
+
+                this.selectedValue = value;
+                
+                // Update display
+                const textElement = document.querySelector(`#${this.containerId}_button .custom-select-text`);
+                const hiddenInput = document.querySelector(`#${this.containerId} input[type="hidden"]`);
+                
+                if (textElement) {
+                    textElement.innerHTML = minecraftColorToHtml(truncateText(selectedOption.label, 25));
+                }
+                
+                if (hiddenInput) {
+                    hiddenInput.value = value;
+                }
+
+                // Update selected class
+                const options = document.querySelectorAll(`#${this.containerId}_dropdown .custom-select-option`);
+                options.forEach(opt => {
+                    opt.classList.toggle('selected', opt.dataset.value === value);
+                });
+
+                this.closeDropdown();
+                
+                if (this.onChangeCallback) {
+                    this.onChangeCallback(value, selectedOption);
+                }
+            }
+        }
+
+        // Renderiza grupo de seleção
+        function renderizarGrupo(titulo, listaItens) {
+            let grupoHtml = `<div class="item-group"><h3>${titulo}</h3><div class="group-grid">`;
+            
+            listaItens.forEach(itemType => {
+                let packsWithItem = ALL_PACKS_DATA.filter(pack =>
+                    pack.available_textures && pack.available_textures[itemType]
+                );
+                
+                const temPackComItem = packsWithItem.length > 0;
+                let opcaoDefault = {
+                    value: 'default',
+                    label: 'Minecraft Padrão (Vanilla)',
+                    preview: VANILLA_PREVIEW_MAP[itemType] || ''
+                };
+                
+                packsWithItem.sort((a, b) => (a.formatted_name || a.name || '').localeCompare(b.formatted_name || b.name || ''));
+
+                let opcoes = temPackComItem ? 
+                    packsWithItem.map(pack => ({
+                        value: pack.id,
+                        label: pack.formatted_name || pack.name || pack.id || 'Pack',
+                        preview: pack.available_textures[itemType].static_url_path
+                    })) : 
+                    [opcaoDefault];
+
+                const selectName = `select_${itemType.replace(/ /g, '_')}`;
+                const defaultSelected = temPackComItem ? packsWithItem[0].id : 'default';
+                const defaultPreview = temPackComItem ? packsWithItem[0].available_textures[itemType].static_url_path : opcaoDefault.preview;
+
+                grupoHtml += `
+                    <div class="selection-group">
+                        <label for="${selectName}">${itemType}:</label>
+                        <div id="${selectName}" class="custom-select-container"></div>
+                        <img id="preview_${selectName}" class="texture-preview" src="${defaultPreview}" alt="${itemType}">
+                    </div>`;
+            });
+            
+            grupoHtml += '</div></div>';
+            return grupoHtml;
+        }
+
+        // Função para atualizar preview
+        function updatePreview(selectName, selectedValue, selectedOption) {
+            const previewImg = document.getElementById(`preview_${selectName}`);
+            if (previewImg && selectedOption.preview) {
+                previewImg.src = selectedOption.preview;
+            }
+        }
+
+        // Monta previews por categoria
+        function montarPreviewsPorCategoria() {
+            const container = document.getElementById("texture_options_container");
+            container.innerHTML = "";
+            
+            // Renderiza HTML
+            container.innerHTML += renderizarGrupo("Blocos", categorias.blocos);
+            container.innerHTML += renderizarGrupo("Minérios", categorias.minerios);
+            container.innerHTML += renderizarGrupo("Ferramentas", categorias.ferramentas);
+            container.innerHTML += renderizarGrupo("Armaduras", categorias.armaduras);
+
+            // Inicializa custom selects
+            [...categorias.blocos, ...categorias.minerios, ...categorias.ferramentas, ...categorias.armaduras].forEach(itemType => {
+                const selectName = `select_${itemType.replace(/ /g, '_')}`;
+                
+                let packsWithItem = ALL_PACKS_DATA.filter(pack =>
+                    pack.available_textures && pack.available_textures[itemType]
+                );
+                
+                const temPackComItem = packsWithItem.length > 0;
+                let opcaoDefault = {
+                    value: 'default',
+                    label: 'Minecraft Padrão (Vanilla)',
+                    preview: VANILLA_PREVIEW_MAP[itemType] || ''
+                };
+                
+                let opcoes = temPackComItem ? 
+                    packsWithItem.map(pack => ({
+                        value: pack.id,
+                        label: pack.formatted_name || pack.name || pack.id || 'Pack',
+                        preview: pack.available_textures[itemType].static_url_path
+                    })) : 
+                    [opcaoDefault];
+
+                const defaultSelected = temPackComItem ? packsWithItem[0].id : 'default';
+                
+                new CustomSelect(selectName, opcoes, defaultSelected, (value, option) => {
+                    updatePreview(selectName, value, option);
+                });
+            });
+        }
+
+        // Inicializa quando o DOM estiver pronto
+        $(document).ready(function() {
             montarPreviewsPorCategoria();
         });
     </script>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selecione suas Texturas - Minecraft Texture Mixer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <style>
+        /* Estilos para as cores do Minecraft */
+        /* Estas cores são as mesmas definidas em format_minecraft_text no app.py */
+        .mc-color-0 { color: #000000; } /* Black */
+        .mc-color-1 { color: #0000AA; } /* Dark Blue */
+        .mc-color-2 { color: #00AA00; } /* Dark Green */
+        .mc-color-3 { color: #00AAAA; } /* Dark Aqua */
+        .mc-color-4 { color: #AA0000; } /* Dark Red */
+        .mc-color-5 { color: #AA00AA; } /* Dark Purple */
+        .mc-color-6 { color: #FFAA00; } /* Gold */
+        .mc-color-7 { color: #AAAAAA; } /* Gray */
+        .mc-color-8 { color: #555555; } /* Dark Gray */
+        .mc-color-9 { color: #5555FF; } /* Blue */
+        .mc-color-a { color: #55FF55; } /* Green */
+        .mc-color-b { color: #55FFFF; } /* Aqua */
+        .mc-color-c { color: #FF5555; } /* Red */
+        .mc-color-d { color: #FF55FF; } /* Light Purple */
+        .mc-color-e { color: #FFFF55; } /* Yellow */
+        .mc-color-f { color: #FFFFFF; } /* White */
+
+        /* Estilos para formatação especial */
+        .mc-bold { font-weight: bold; }
+        .mc-strikethrough { text-decoration: line-through; }
+        .mc-underline { text-decoration: underline; }
+        .mc-italic { font-style: italic; }
+        .mc-obfuscated { 
+            /* Obfuscated é difícil com CSS puro. */
+            /* Você pode tentar uma fonte que simule ou usar um fallback como: */
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            animation: obfuscate 0.5s infinite alternate; /* Exemplo de animação simples */
+        }
+        /* Exemplo de keyframes para animação obfuscada */
+        @keyframes obfuscate {
+            from { opacity: 1; }
+            to { opacity: 0.5; letter-spacing: 0.2em; }
+        }
+
+        .mc-reset {
+            color: inherit; /* Volta para a cor do elemento pai */
+            font-weight: normal;
+            text-decoration: none;
+            font-style: normal;
+            text-transform: none;
+            letter-spacing: normal;
+            animation: none; /* Desativa a animação de obfuscate */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Selecione suas Texturas</h1>
+
+        <h2>Packs Enviados:</h2>
+        {% if uploaded_packs_data %}
+            <ul class="pack-list">
+                {% for pack in uploaded_packs_data %}
+                    {# Exibe o nome já formatado, sem o ID #}
+                    <li>{{ pack.formatted_name | safe }}</li> 
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="warning">Nenhum pack foi enviado ou pôde ser analisado. Por favor, <a href="{{ url_for('index') }}">volte e faça o upload</a>.</p>
+        {% endif %}
+
+        <div id="texture_options_container"></div>
+
+        <div class="selection-area">
+            <form action="{{ url_for('generate_pack') }}" method="post">
+                <div id="texture_options_container">
+                    {# Este bloco será preenchido e atualizado via JavaScript #}
+                </div>
+                <button type="submit">Gerar Pack Personalizado</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const ALL_PACKS_DATA = {{ uploaded_packs_data | tojson | safe }};
+        const allTextures = {{ textures_dict | tojson }};
+        const VANILLA_PREVIEW_MAP = {{ vanilla_preview_map_json_string | safe }};
+
+        // Mapeamento das categorias com base nos nomes do TEXTURE_MAPPING
+        const categorias = {
+            blocos: [
+                "Lã", "Madeira (Tábuas)", "Pedra"
+            ],
+            minerios: [
+                "Minério de Diamante", "Minério de Esmeralda", "Esmeralda (Item)"
+                // Você pode adicionar manualmente outros ores e ingots aqui
+            ],
+            ferramentas: [
+                "Espada de Diamante", "Espada de Ferro", "Espada de Ouro", "Espada de Madeira", "Espada de Pedra",
+                "Picareta de Diamante", "Picareta de Ferro", "Picareta de Ouro", "Picareta de Madeira", "Picareta de Pedra",
+                "Machado de Diamante", "Machado de Ferro", "Machado de Ouro", "Machado de Madeira", "Machado de Pedra",
+                "Pá de Diamante", "Pá de Ferro", "Pá de Ouro", "Pá de Madeira", "Pá de Pedra",
+                "Enxada de Diamante", "Enxada de Ferro", "Enxada de Ouro", "Enxada de Madeira", "Enxada de Pedra",
+                "Arco", "Flecha"
+            ],
+            armaduras: [
+                "Capacete de Diamante", "Peitoral de Diamante", "Calças de Diamante", "Botas de Diamante",
+                "Capacete de Ferro", "Peitoral de Ferro", "Calças de Ferro", "Botas de Ferro",
+                "Capacete de Ouro", "Peitoral de Ouro", "Calças de Ouro", "Botas de Ouro",
+                "Capacete de Couro", "Peitoral de Couro", "Calças de Couro", "Botas de Couro"
+            ]
+        };
+
+        function truncateText(text, maxLength = 25) {
+            if (text.length > maxLength) {
+                return text.slice(0, maxLength - 3) + '...';
+            }
+            return text;
+            }
+
+        function createSelectWithTruncatedOptions(selectId, options, defaultSelectedId) {
+            const truncateText = (text, maxLength = 25) =>
+                text.length > maxLength ? text.slice(0, maxLength - 3) + '...' : text;
+
+            let html = `<select id="${selectId}" name="${selectId}" class="select2">`;
+
+            options.forEach(opt => {
+                const selected = opt.id === defaultSelectedId ? 'selected' : '';
+                const displayText = truncateText(opt.formatted_name || opt.name || 'Pack');
+                html += `<option value="${opt.id}" ${selected}>${displayText}</option>`;
+            });
+
+            html += '</select>';
+            return html;
+            }
+            
+    <!-- IMPORTANDO JS do jQuery e Select2 -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    function truncateText(text, maxLength = 25) {
+        if (!text) return '';
+        return text.length > maxLength ? text.slice(0, maxLength - 3) + '...' : text;
+    }
+
+        const colorMap = {
+            '0': '#000000', '1': '#0000AA', '2': '#00AA00', '3': '#00AAAA',
+            '4': '#AA0000', '5': '#AA00AA', '6': '#FFAA00', '7': '#AAAAAA',
+            '8': '#555555', '9': '#5555FF', 'a': '#55FF55', 'b': '#55FFFF',
+            'c': '#FF5555', 'd': '#FF55FF', 'e': '#FFFF55', 'f': '#FFFFFF'
+        };
+        let html = '';
+        let openSpan = false;
+        for (let i = 0; i < text.length; i++) {
+            if (text[i] === '§' && i + 1 < text.length) {
+                const code = text[i + 1].toLowerCase();
+                if (colorMap[code]) {
+                    if (openSpan) html += '</span>';
+                    html += `<span style="color:${colorMap[code]}">`;
+                    openSpan = true;
+                    i++;
+                    continue;
+                } else if (code === 'r') {
+                    if (openSpan) { html += '</span>'; openSpan = false; }
+                    i++;
+                    continue;
+                }
+            }
+            html += text[i];
+        }
+        if (openSpan) html += '</span>';
+        return html;
+
+    // Renderiza os SELECTS por categoria
+    function renderizarGrupo(titulo, listaItens) {
+        let grupoHtml = `<div class="item-group"><h3>${titulo}</h3><div class="group-grid">`;
+        listaItens.forEach(itemType => {
+            let packsWithItem = ALL_PACKS_DATA.filter(pack =>
+                pack.available_textures && pack.available_textures[itemType]
+            );
+            const temPackComItem = packsWithItem.length > 0;
+            let opcaoDefault = {
+                id: 'default',
+                name: 'Minecraft Padrão (Vanilla)',
+                static_url_path: VANILLA_PREVIEW_MAP[itemType] || ''
+            };
+            packsWithItem.sort((a, b) => (a.formatted_name || a.name || '').localeCompare(b.formatted_name || b.name || ''));
+
+            let opcoes = temPackComItem ? [...packsWithItem] : [opcaoDefault];
+
+            const selectName = `select_${itemType.replace(/ /g, '_')}`;
+
+            grupoHtml += `
+                <div class="selection-group">
+                    <label for="${selectName}">${itemType}:</label>
+                    <select id="${selectName}" class="select2" name="${selectName}" onchange="updatePreview('${selectName}')">
+                        ${opcoes.map(pack => {
+                            const displayName = pack.formatted_name || pack.name || pack.id || 'Pack';
+                            const displayText = truncateText(displayName, 25);
+                            const selectedAttr = pack.id === (temPackComItem ? packsWithItem[0].id : 'default') ? 'selected' : '';
+                            return `<option value="${pack.id}" ${selectedAttr}>${displayText}</option>`;
+                        }).join('')}
+                    </select>
+                    <img id="preview_${selectName}" class="texture-preview" src="${temPackComItem ? packsWithItem[0].available_textures[itemType].static_url_path : opcaoDefault.static_url_path}" alt="${itemType}">
+                </div>`;
+        });
+        grupoHtml += '</div></div>';
+        return grupoHtml;
+    }
+
+    // INSERE OS SELECTS NO DOM E INICIALIZA SELECT2 (tem que ser assim!)
+    function montarPreviewsPorCategoria() {
+        const container = document.getElementById("texture_options_container");
+        container.innerHTML = "";
+        container.innerHTML += renderizarGrupo("Blocos", categorias.blocos);
+        container.innerHTML += renderizarGrupo("Minérios", categorias.minerios);
+        container.innerHTML += renderizarGrupo("Ferramentas", categorias.ferramentas);
+        container.innerHTML += renderizarGrupo("Armaduras", categorias.armaduras);
+
+        // IMPORTANTE: Inicializar Select2 depois que os selects estão no DOM!
+        $('.select2').select2({
+            escapeMarkup: m => m,
+            templateResult: data => data.id ? minecraftColorToHtml(data.text) : data.text,
+            templateSelection: data => data.id ? minecraftColorToHtml(data.text) : data.text
+        });
+    }
+
+    // Chama a função acima só quando a página estiver pronta:
+    $(document).ready(function() {
+        montarPreviewsPorCategoria();
+    });
+
+    // Exemplo de stub para a função updatePreview (só para não dar erro)
+    function updatePreview(selectName) {
+        // ...se quiser atualizar img dinamicamente aqui...
+        // por enquanto não faz nada :)
+    }
+    </script>
+</body>
+</html>
