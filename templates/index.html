@@ -32,20 +32,76 @@
     </div>
 
     <script>
-        // Script para mostrar o nome dos arquivos selecionados
-        document.getElementById('texture_packs_upload').addEventListener('change', function() {
+            // Mapeamento das cores do Minecraft §x para CSS
+            const colorMap = {
+            '0': '#000000',
+            '1': '#0000AA',
+            '2': '#00AA00',
+            '3': '#00AAAA',
+            '4': '#AA0000',
+            '5': '#AA00AA',
+            '6': '#FFAA00',
+            '7': '#AAAAAA',
+            '8': '#555555',
+            '9': '#5555FF',
+            'a': '#55FF55',
+            'b': '#55FFFF',
+            'c': '#FF5555',
+            'd': '#FF55FF',
+            'e': '#FFFF55',
+            'f': '#FFFFFF'
+            };
+
+            // Função para converter texto com códigos do tipo §x para spans estilizados
+            function minecraftColorToHtml(text) {
+            let result = '';
+            let openSpan = false;
+            let lastColor = null;
+
+            for (let i = 0; i < text.length; i++) {
+                if (text[i] === '§' && i + 1 < text.length) {
+                const code = text[i + 1].toLowerCase();
+                if (colorMap[code]) {
+                    // Fecha span anterior
+                    if (openSpan) result += '</span>';
+                    // Abre novo span com a cor
+                    result += `<span style="color:${colorMap[code]}">`;
+                    openSpan = true;
+                    lastColor = code;
+                } else if (code === 'r') {
+                    if (openSpan) {
+                    result += '</span>';
+                    openSpan = false;
+                    lastColor = null;
+                    }
+                }
+                i++; // pula o código depois do §
+                } else {
+                // Escapa HTML para evitar problemas
+                const c = text[i]
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+                result += c;
+                }
+            }
+            if (openSpan) result += '</span>';
+            return result;
+            }
+            // Script para mostrar o nome dos arquivos selecionados
+            document.getElementById('texture_packs_upload').addEventListener('change', function() {
             const display = document.getElementById('selected-files-display');
-            display.innerHTML = ''; // Limpa o display anterior
             if (this.files.length > 0) {
                 let fileNames = [];
                 for (let i = 0; i < this.files.length; i++) {
-                    fileNames.push(this.files[i].name);
+                fileNames.push(minecraftColorToHtml(this.files[i].name));
                 }
                 display.innerHTML = 'Arquivos selecionados: ' + fileNames.join(', ');
             } else {
                 display.innerHTML = 'Nenhum arquivo selecionado.';
             }
-        });
+            });
     </script>
 </body>
 </html>

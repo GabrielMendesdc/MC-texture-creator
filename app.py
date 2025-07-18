@@ -304,8 +304,6 @@ if __name__ == '__main__':
         # Carrega as texturas do default.zip
         load_default_zip_textures(app.config['APP_ROOT'])
         print("Aplicação inicializada com sucesso!")
-        print("Sistema de bordas ativo:")
-        print("  - Verde: Texturas enviadas pelo usuário")
-        print("  - Vermelho: Texturas padrão do default.zip")
+        
     app.run(debug=True, host='0.0.0.0')
 

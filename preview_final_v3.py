@@ -180,8 +180,6 @@ _default_zip_loaded = False
 
 # Função para converter códigos de cor do Minecraft (&x ou §x) para HTML/CSS
 def format_minecraft_text(text):
-    # Dicionário de cores do Minecraft para códigos hexadecimais
-    # https://minecraft.fandom.com/wiki/Formatting_codes#Color_codes
     color_map = {
         "0": "#000000", # Black
         "1": "#0000AA", # Dark Blue
@@ -201,95 +199,30 @@ def format_minecraft_text(text):
         "f": "#FFFFFF", # White
     }
     
-    # Dicionário para estilos especiais (bold, italic, etc.)
     style_map = {
-        "l": "font-weight: bold;",      # Bold
-        "m": "text-decoration: line-through;", # Strikethrough
-        "n": "text-decoration: underline;", # Underline
-        "o": "font-style: italic;",     # Italic
-        "k": "text-transform: uppercase;", # Obfuscated (não implementável com CSS simples, usar uppercase como fallback)
-        "r": "color: #FFFFFF; font-weight: normal; text-decoration: none; font-style: normal;", # Reset
+        "l": "font-weight: bold;",
+        "m": "text-decoration: line-through;",
+        "n": "text-decoration: underline;",
+        "o": "font-style: italic;",
+        "k": "text-transform: uppercase;",
+        "r": "color: #FFFFFF; font-weight: normal; text-decoration: none; font-style: normal;",
     }
 
-    # Substitui & ou § por <span class="mc-color-X">
-    # Regex para encontrar & ou § seguido por um caractere de código
-    # Captura o caractere do código no grupo 1
     def replace_code(match):
         code = match.group(1).lower()
         if code in color_map:
             return f"<span style=\"color: {color_map[code]};\">"
         elif code in style_map:
             return f"<span style=\"{style_map[code]}\">"
-        return match.group(0) # Retorna o match original se não for um código válido
+        return match.group(0)
 
-    # Primeiro, substitui os códigos de formatação por tags <span>
-    # Usa re.sub para substituir todas as ocorrências
     formatted_text = re.sub(r"[&§]([0-9a-fk-or])", replace_code, text)
-    
-    # Garante que todas as tags <span> abertas sejam fechadas no final
-    # Isso é um hack simples, pode não ser perfeito para aninhamento complexo,
-    # mas funciona para a maioria dos casos de nomes de packs.
     open_spans = formatted_text.count("<span")
     close_spans = formatted_text.count("</span>")
     formatted_text += "</span>" * (open_spans - close_spans)
 
     return formatted_text
 
-def add_border_to_image(image_path, border_color, border_width=1):
-    """
-    Adiciona uma borda colorida ao redor de uma imagem
-    
-    Args:
-        image_path: Caminho para a imagem
-        border_color: Cor da borda (tuple RGB ou string)
-        border_width: Largura da borda em pixels
-    
-    Returns:
-        Caminho para a nova imagem com borda
-    """
-    try:
-        # Abre a imagem original
-        with Image.open(image_path) as img:
-            # Converte para RGBA se necessário
-            if img.mode != "RGBA":
-                img = img.convert("RGBA")
-            
-            # Calcula o novo tamanho com a borda
-            new_width = img.width + (border_width * 2)
-            new_height = img.height + (border_width * 2)
-            
-            # Cria uma nova imagem com a borda
-            bordered_img = Image.new("RGBA", (new_width, new_height), (0, 0, 0, 0))
-            
-            # Desenha a borda
-            draw = ImageDraw.Draw(bordered_img)
-            
-            # Converte cor se for string
-            if isinstance(border_color, str):
-                if border_color == "green":
-                    border_color = (0, 255, 0, 255)
-                elif border_color == "red":
-                    border_color = (255, 0, 0, 255)
-                else:
-                    border_color = (128, 128, 128, 255)
-            
-            # Desenha retângulos para criar a borda
-            for i in range(border_width):
-                draw.rectangle([i, i, new_width-1-i, new_height-1-i], outline=border_color)
-            
-            # Cola a imagem original no centro
-            bordered_img.paste(img, (border_width, border_width), img)
-            
-            # Salva a nova imagem
-            bordered_path = image_path.replace(".png", "_bordered.png")
-            bordered_img.save(bordered_path)
-            
-            return bordered_path
-            
-    except Exception as e:
-        print(f"Erro ao adicionar borda à imagem {image_path}: {e}")
-        traceback.print_exc()
-        return image_path  # Retorna o caminho original se falhar
 
 # Função para recortar ícones de coração e fome do sprite sheet icons.png
 def crop_heart_hunger_smart(icons_png_path, icon_type, pack_preview_dir, pack_upload_id):
@@ -521,20 +454,14 @@ def get_default_texture_for_pack(friendly_name, pack_preview_dir, pack_upload_id
         texture_info = DEFAULT_TEXTURES_CACHE[friendly_name]
         
         # Salva a textura no diretório de preview do pack
-        preview_filename = f"default_{friendly_name}_{texture_info['original_filename']}"
+        preview_filename = f"default_{texture_info['original_filename']}"
         preview_dest_path = os.path.join(pack_preview_dir, preview_filename)
         
         with open(preview_dest_path, "wb") as dest:
             dest.write(texture_info["data"])
-        
-        # Adiciona borda vermelha para indicar que é textura padrão
-        bordered_path = add_border_to_image(preview_dest_path, "red", 2)
-        
-        # Usa o arquivo com borda se foi criado com sucesso
-        final_filename = os.path.basename(bordered_path)
-        
-        print(f"[DEBUG DEFAULT] Textura padrão salva em: {preview_dest_path} -> {bordered_path}")
-
+                
+        final_filename = os.path.basename(preview_dest_path)
+        print('476: ', final_filename)
         return {
             "static_url_path": url_for("temp_previews", filename=f"{pack_upload_id}/{final_filename.replace("\\", "/")}"),
             "original_internal_path": texture_info["internal_path"],
@@ -583,12 +510,9 @@ def get_default_icons_for_pack(pack_preview_dir, pack_upload_id):
                     icon_filename = cropped_url.split("/")[-1]
                     icon_path = os.path.join(pack_preview_dir, icon_filename)
                     
-                    if os.path.exists(icon_path):
-                        bordered_path = add_border_to_image(icon_path, "red", 1)
-                        bordered_filename = os.path.basename(bordered_path)
-                        
+                    if os.path.exists(icon_path):                       
                         processed_icons[friendly_name] = {
-                            "static_url_path": url_for("temp_previews", filename=f"{pack_upload_id}/{bordered_filename.replace("\\", "/")}"),
+                            "static_url_path": url_for("temp_previews", filename=f"{pack_upload_id}/{icon_filename.replace("\\", "/")}"),
                             "original_internal_path": icons_info["internal_path"],
                             "is_default": True
                         }
@@ -673,11 +597,9 @@ def analyze_resource_pack(zip_path, pack_upload_id, temp_preview_folder):
                                 icon_path = os.path.join(pack_preview_dir, icon_filename)
                                 
                                 if os.path.exists(icon_path):
-                                    bordered_path = add_border_to_image(icon_path, "green", 1)
-                                    bordered_filename = os.path.basename(bordered_path)
-                                    
+                                    print('612: ', icon_filename)
                                     user_textures[friendly_name] = {
-                                        "static_url_path": url_for("temp_previews", filename=f"{pack_upload_id}/{bordered_filename.replace("\\", "/")}"),
+                                        "static_url_path": url_for("temp_previews", filename=f"{pack_upload_id}/{icon_filename.replace("\\", "/")}"),
                                         "original_internal_path": icons_png_path,
                                         "is_default": False
                                     }
@@ -719,7 +641,6 @@ def analyze_resource_pack(zip_path, pack_upload_id, temp_preview_folder):
                                     generated_gif_path = generate_animated_gif(temp_png_path, temp_mcmeta_path, gif_output_path)
 
                                     if generated_gif_path:
-                                        # Adiciona borda verde para GIFs do usuário (mais complexo, por enquanto sem borda)
                                         user_textures[friendly_name] = {
                                             "static_url_path": url_for("temp_previews", filename=f"{pack_upload_id}/{os.path.basename(generated_gif_path).replace("\\", "/")}"),
                                             "original_internal_path": member_path,
@@ -728,34 +649,24 @@ def analyze_resource_pack(zip_path, pack_upload_id, temp_preview_folder):
                                     else:
                                         # Fallback para imagem estática se o GIF falhar
                                         original_filename = os.path.basename(relative_texture_path)
-                                        preview_filename = f"{friendly_name}_{original_filename}"
-                                        preview_dest_path = os.path.join(pack_preview_dir, preview_filename)
+                                        preview_dest_path = os.path.join(pack_preview_dir, original_filename)
                                         with zf.open(member_path) as source, open(preview_dest_path, "wb") as dest:
                                             shutil.copyfileobj(source, dest)
-                                        
-                                        # Adiciona borda verde
-                                        bordered_path = add_border_to_image(preview_dest_path, "green", 2)
-                                        bordered_filename = os.path.basename(bordered_path)
-                                        
+                                                                                
                                         user_textures[friendly_name] = {
-                                            "static_url_path": url_for("temp_previews", filename=f"{pack_upload_id}/{bordered_filename.replace("\\", "/")}"),
+                                            "static_url_path": url_for("temp_previews", filename=f"{pack_upload_id}/{original_filename.replace("\\", "/")}"),
                                             "original_internal_path": member_path,
                                             "is_default": False
                                         }
                                 else:
                                     # Se .mcmeta não existe, trata como estática
                                     original_filename = os.path.basename(relative_texture_path)
-                                    preview_filename = f"{friendly_name}_{original_filename}"
-                                    preview_dest_path = os.path.join(pack_preview_dir, preview_filename)
+                                    preview_dest_path = os.path.join(pack_preview_dir, original_filename)
                                     with zf.open(member_path) as source, open(preview_dest_path, "wb") as dest:
                                         shutil.copyfileobj(source, dest)
                                     
-                                    # Adiciona borda verde
-                                    bordered_path = add_border_to_image(preview_dest_path, "green", 2)
-                                    bordered_filename = os.path.basename(bordered_path)
-                                    
                                     user_textures[friendly_name] = {
-                                        "static_url_path": url_for("temp_previews", filename=f"{pack_upload_id}/{bordered_filename.replace("\\", "/")}"),
+                                        "static_url_path": url_for("temp_previews", filename=f"{pack_upload_id}/{original_filename.replace("\\", "/")}"),
                                         "original_internal_path": member_path,
                                         "is_default": False
                                     }
@@ -763,18 +674,13 @@ def analyze_resource_pack(zip_path, pack_upload_id, temp_preview_folder):
                             # --- Lógica para Texturas Estáticas (sem .mcmeta ou não marcadas como animadas) ---
                             else:
                                 original_filename = os.path.basename(relative_texture_path)
-                                preview_filename = f"{friendly_name}_{original_filename}"
-                                preview_dest_path = os.path.join(pack_preview_dir, preview_filename)
+                                preview_dest_path = os.path.join(pack_preview_dir, original_filename)
 
                                 with zf.open(member_path) as source, open(preview_dest_path, "wb") as dest:
                                     shutil.copyfileobj(source, dest)
 
-                                # Adiciona borda verde para indicar que é textura do usuário
-                                bordered_path = add_border_to_image(preview_dest_path, "green", 2)
-                                bordered_filename = os.path.basename(bordered_path)
-
                                 user_textures[friendly_name] = {
-                                    "static_url_path": url_for("temp_previews", filename=f"{pack_upload_id}/{bordered_filename.replace("\\", "/")}"),
+                                    "static_url_path": url_for("temp_previews", filename=f"{pack_upload_id}/{original_filename.replace("\\", "/")}"),
                                     "original_internal_path": member_path,
                                     "is_default": False
                                 }
