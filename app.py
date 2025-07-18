@@ -9,7 +9,6 @@ from flask import Flask, render_template, request, redirect, session, url_for, s
 # Importa as funções e variáveis do módulo preview corrigido
 from preview_final_v3 import (
     TEXTURE_MAPPING, 
-    PROFILES, 
     VANILLA_PREVIEW_MAP_PYTHON,
     analyze_resource_pack_with_defaults,
     initialize_vanilla_preview_map,
@@ -84,6 +83,9 @@ def upload_packs():
             )
             
             if pack_analysis:
+                original_file_name = file.filename
+                pack_analysis['formatted_name'] = original_file_name
+                # Outras preparações...
                 uploaded_packs_data.append(pack_analysis)
                 session['uploaded_packs'].append(pack_analysis['id']) # Armazena apenas o ID
                 session['uploaded_packs_data'].append(pack_analysis)  # Armazena dados completos
@@ -123,7 +125,6 @@ def upload_packs():
         # OU, para mergear de vários packs, pode juntar manualmente se seu JS espera tudo junto
     return render_template('selection.html', 
                            uploaded_packs_data=uploaded_packs_data, 
-                           profiles=PROFILES,
                            all_item_types=all_item_types_list,
                            vanilla_preview_map_json_string=vanilla_preview_map_json_string,
                            textures_dict=textures_dict)
@@ -304,6 +305,6 @@ if __name__ == '__main__':
         # Carrega as texturas do default.zip
         load_default_zip_textures(app.config['APP_ROOT'])
         print("Aplicação inicializada com sucesso!")
-        
+
     app.run(debug=True, host='0.0.0.0')
 

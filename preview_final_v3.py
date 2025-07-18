@@ -138,38 +138,6 @@ TEXTURE_MAPPING = {
     "Ícone de Comida": {"paths": ["gui/icons.png"], "is_icon_sprite": True, "icon_type": "hunger_full"},
 }
 
-# --- Definição dos Perfis ---
-PROFILES = {
-    "bedwars": { # Agora o perfil padrão
-        "name": "Bedwars",
-        "items": [
-            "Lã", "Espada de Diamante", "Arco", "Flecha", "Esfera de Fogo", "Creme de Magma",
-            "Ícone de Coração", "Ícone de Comida", # Adicionados aqui
-            "Picareta de Ferro", "Picareta de Diamante", "Machado de Ferro", "Machado de Diamante",
-            "Madeira (Tábuas)", "Pedra", # Adicionados para Bedwars
-        ]
-    },
-    "pvp": {
-        "name": "PvP",
-        "items": [
-            "Espada de Diamante", "Espada de Ferro", "Espada de Ouro", "Espada de Madeira", "Espada de Pedra",
-            "Capacete de Diamante", "Peitoral de Diamante", "Calças de Diamante", "Botas de Diamante",
-            "Capacete de Ferro", "Peitoral de Ferro", "Calças de Ferro", "Botas de Ferro",
-            "Ícone de Coração", "Ícone de Comida", # HUD de vida e fome
-            "Lã", # Lã ainda pode ser relevante para alguns PvPs
-            "Madeira (Tábuas)",
-        ]
-    },
-    "standard": {
-        "name": "Padrão",
-        "items": [
-            "Lã", "Madeira (Tábuas)", "Pedra", "Minério de Diamante", "Minério de Esmeralda",
-            "Espada de Diamante", "Arco", "Flecha", "Picareta de Ferro", "Picareta de Diamante",
-            "Ícone de Coração", "Ícone de Comida",
-        ]
-    }
-}
-
 # Variável global para o mapa de previews vanilla
 VANILLA_PREVIEW_MAP_PYTHON = {}
 

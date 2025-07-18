@@ -73,30 +73,19 @@
 
         <div class="selection-area">
             <form action="{{ url_for('generate_pack') }}" method="post">
-                <div class="profile-selection">
-                    <h3>Escolha um Perfil:</h3>
-                    {% for profile_id, profile_data in profiles.items() %}
-                        <label>
-                            <input type="radio" name="profile_selection" value="{{ profile_id }}"
-                                   {% if profile_id == 'bedwars' %} checked {% endif %} {# Perfil padrão Bedwars #}
-                                   onchange="updateTextureOptions(this.value)">
-                            {{ profile_data.name }}
-                        </label>
-                    {% endfor %}
-                </div>
-
-                <h2>Opções de Textura por Item</h2>
                 <div id="texture_options_container">
                     {# Este bloco será preenchido e atualizado via JavaScript #}
                 </div>
-
                 <button type="submit">Gerar Pack Personalizado</button>
             </form>
         </div>
     </div>
 
     <script>
+        const ALL_PACKS_DATA = {{ uploaded_packs_data | tojson | safe }};
         const allTextures = {{ textures_dict | tojson }};
+        const VANILLA_PREVIEW_MAP = {{ vanilla_preview_map_json_string | safe }};
+
         // Mapeamento das categorias com base nos nomes do TEXTURE_MAPPING
         const categorias = {
             blocos: [
@@ -115,43 +104,93 @@
                 "Arco", "Flecha"
             ],
             armaduras: [
-                // Armaduras de Diamante
                 "Capacete de Diamante", "Peitoral de Diamante", "Calças de Diamante", "Botas de Diamante",
-                // Armaduras de Ferro
                 "Capacete de Ferro", "Peitoral de Ferro", "Calças de Ferro", "Botas de Ferro",
-                // Armaduras de Ouro
                 "Capacete de Ouro", "Peitoral de Ouro", "Calças de Ouro", "Botas de Ouro",
-                // Armaduras de Couro
                 "Capacete de Couro", "Peitoral de Couro", "Calças de Couro", "Botas de Couro"
             ]
         };
 
-        function renderizarGrupo(titulo, listaItens) {
-            let grupoHtml = `<div class="item-group"><h3>${titulo}</h3><div class="group-grid">`;
+        function truncateText(text, maxLength = 25) {
+            if (text.length > maxLength) {
+                return text.slice(0, maxLength - 3) + '...';
+            }
+            return text;
+            }
 
-            listaItens.forEach(itemName => {
-                if (allTextures[itemName]) {
-                    const src = allTextures[itemName].static_url_path || "";
+        function createSelectWithTruncatedOptions(selectId, options, defaultSelectedId) {
+            const truncateText = (text, maxLength = 25) =>
+                text.length > maxLength ? text.slice(0, maxLength - 3) + '...' : text;
+
+            let html = `<select id="${selectId}" name="${selectId}">`;
+
+            options.forEach(opt => {
+                const selected = opt.id === defaultSelectedId ? 'selected' : '';
+                const displayText = truncateText(opt.formatted_name || opt.name || 'Pack');
+                html += `<option value="${opt.id}" ${selected}>${displayText}</option>`;
+            });
+
+            html += '</select>';
+            return html;
+            }
+            
+            function renderizarGrupo(titulo, listaItens) {
+                let grupoHtml = `<div class="item-group"><h3>${titulo}</h3><div class="group-grid">`;
+
+                listaItens.forEach(itemType => {
+                    let packsWithItem = ALL_PACKS_DATA.filter(pack =>
+                        pack.available_textures && pack.available_textures[itemType]
+                    );
+
+                    const temPackComItem = packsWithItem.length > 0;
+
+                    let opcaoDefault = {
+                        id: 'default',
+                        name: 'Minecraft Padrão (Vanilla)',
+                        static_url_path: VANILLA_PREVIEW_MAP[itemType] || ''
+                    };
+
+                    packsWithItem.sort((a, b) => (a.formatted_name || a.name || '').localeCompare(b.formatted_name || b.name || ''));
+
+                    let opcoes = [];
+
+                    if (temPackComItem) {
+                        opcoes = [...packsWithItem];
+                    } else {
+                        opcoes = [opcaoDefault];
+                    }
+
+                    const selectName = `select_${itemType.replace(/ /g, '_')}`;
+
                     grupoHtml += `
                         <div class="selection-group">
-                            <label>${itemName}</label>
-                            <img class="texture-preview" src="${src}" alt="${itemName}">
+                            <label for="${selectName}">${itemType}:</label>
+                            <select id="${selectName}" name="${selectName}" onchange="updatePreview('${selectName}')">
+                                ${opcoes.map(pack => {
+                                    const displayName = pack.formatted_name || pack.name || pack.id || 'Pack';
+                                    const displayText = truncateText(displayName, 25);
+                                    const selectedAttr = pack.id === (temPackComItem ? packsWithItem[0].id : 'default') ? 'selected' : '';
+                                    return `<option value="${pack.id}" ${selectedAttr}>${displayText}</option>`;
+                                }).join('')}
+                            </select>
+                            <img id="preview_${selectName}" class="texture-preview" src="${temPackComItem ? packsWithItem[0].available_textures[itemType].static_url_path : opcaoDefault.static_url_path}" alt="${itemType}">
                         </div>
                     `;
-                }
-            });
-            grupoHtml += "</div></div>";
-            return grupoHtml;
-        }
+                });
+
+                grupoHtml += '</div></div>';
+                return grupoHtml;
+            }
+
 
         function montarPreviewsPorCategoria() {
             const container = document.getElementById("texture_options_container");
             let html = "";
-            html += renderizarGrupo("Blocos", categorias.blocos);
-            html += renderizarGrupo("Minérios", categorias.minerios);
-            html += renderizarGrupo("Ferramentas", categorias.ferramentas);
-            html += renderizarGrupo("Armaduras", categorias.armaduras);
-            container.innerHTML = html;
+            const htmlBlocos = renderizarGrupo("Blocos", categorias.blocos);
+            const htmlMinerios = renderizarGrupo("Minérios", categorias.minerios);
+            const htmlFerramentas = renderizarGrupo("Ferramentas", categorias.ferramentas);
+            const htmlArmaduras = renderizarGrupo("Armaduras", categorias.armaduras);
+            container.innerHTML = htmlBlocos + htmlMinerios + htmlFerramentas + htmlArmaduras;
         }
 
         document.addEventListener('DOMContentLoaded', () => {
