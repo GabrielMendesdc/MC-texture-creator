@@ -166,32 +166,23 @@
             let html = ''; // String para construir o HTML dos dropdowns
 
             profileItems.forEach(itemType => {
-                let packsWithItem = []; // Armazena os packs que contêm este 'itemType'
-                
-                // Percorre todos os packs enviados para ver quais têm a textura
+                let packsWithItem = [];
+
                 ALL_PACKS_DATA.forEach(pack => {
                     if (pack.available_textures && pack.available_textures[itemType]) {
                         packsWithItem.push(pack);
                     }
                 });
 
-                // Só cria o grupo de seleção se houver pelo menos um pack com a textura
-                // OU se houver uma preview vanilla mapeada para este item!
                 if (packsWithItem.length > 0 || VANILLA_PREVIEW_MAP[itemType]) {
-                    let defaultSelectedPackId = 'default'; // Padrão é o vanilla
-                    let defaultPreviewSrc = VANILLA_PREVIEW_MAP[itemType] || ""; // Padrão para preview vanilla ou vazia
+                    let defaultSelectedPackId = 'default';
+                    let defaultPreviewSrc = VANILLA_PREVIEW_MAP[itemType] || "";
 
-                    // Se houver packs enviados, tentamos usar a textura do primeiro pack como padrão.
-                    if (ALL_PACKS_DATA.length > 0) {
-                        const firstUploadedPack = ALL_PACKS_DATA[0];
-                        if (firstUploadedPack.available_textures && firstUploadedPack.available_textures[itemType]) {
-                            defaultSelectedPackId = firstUploadedPack.id;
-                            defaultPreviewSrc = firstUploadedPack.available_textures[itemType].static_url_path;
-                        }
+                    if (packsWithItem.length > 0) {
+                        defaultSelectedPackId = packsWithItem[0].id;
+                        defaultPreviewSrc = packsWithItem[0].available_textures[itemType].static_url_path;
                     }
 
-                    // O nome do campo 'name' no select deve ser consistente com o que o Flask espera.
-                    // Usaremos o itemType.replace(/ /g, '_') para garantir que não haja espaços.
                     const selectName = `select_${itemType.replace(/ /g, '_')}`;
 
                     html += `
@@ -199,27 +190,21 @@
                         <label for="${selectName}">${itemType}:</label>
                         <select id="${selectName}" name="${selectName}" onchange="updatePreview('${selectName}')">
                             <option value="default" ${defaultSelectedPackId === 'default' ? 'selected' : ''}>Minecraft Padrão (Vanilla)</option>`;
-                    
+
                     packsWithItem.forEach(pack => {
                         const isSelected = (pack.id === defaultSelectedPackId) ? 'selected' : '';
-                        // Usa o nome formatado do pack no dropdown
                         html += `<option value="${pack.id}" ${isSelected}>${pack.formatted_name}</option>`;
                     });
 
-                    Object.keys(allTextures).forEach(itemName => {
-                        const src = allTextures[itemName]?.static_url_path || "";
-                        html += `
-                        <div class="selection-group">
-                            <label>${itemName}</label>
-                            <img class="texture-preview" src="${src}" alt="${itemName}" style="border:2px solid red;">
-                        </div>`;
-                        console.log("Renderizou", itemName, "previewSrc:", src);
-                    });
+                    html += `</select>
+                        <img class="texture-preview" src="${defaultPreviewSrc}" alt="${itemType}">
+                    </div>`;
                 }
             });
             console.log("HTML FINAL QUE VAI PARA O DOM:\n", html);
             html += `<img src="https://minecraft.wiki/images/Item_diamond_sword.png">`;
             container.innerHTML = html;
+
             // Após gerar as opções, atualiza as previews iniciais
             profileItems.forEach(itemType => {
                 const selectId = `select_${itemType.replace(/ /g, '_')}`;

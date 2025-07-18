@@ -16,6 +16,10 @@ body {
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 0 15px rgba(0, 0, 0, 0.4); /* Sombra mais escura */
+    display: flex;
+    flex-wrap: wrap;         /* <-- ESSENCIAL! */
+    gap: 16px;               /* Espaçamento entre previews */
+    align-items: flex-start; /* Alinha ao topo */
 }
 
 h1, h2, h3 {
@@ -69,9 +73,11 @@ h1, h2, h3 {
     background-color: #4a5568; /* Fundo do grupo (Tailwind gray-700) */
     border: 1px solid #6b7280; /* Borda do grupo (Tailwind gray-600) */
     border-radius: 5px;
-    display: flex; /* Mantém o layout flexbox */
-    align-items: center; /* Alinha verticalmente */
-    gap: 10px; /* Espaçamento entre os elementos */
+    gap: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 8px 0;
 }
 
 .selection-group label {
@@ -109,7 +115,7 @@ h1, h2, h3 {
     width: 128px; /* Tamanho maior para a preview */
     height: 128px;
     border: 1px solid #718096; /* Borda (Tailwind gray-500) */
-    background-color: #f00; /* vermelho, só pra testar */
+    background-color: rgb(80, 69, 69); /* vermelho, só pra testar */
     flex-shrink: 0; /* Não encolhe */
     object-fit: contain; /* Garante que a imagem se ajuste sem cortar */
     image-rendering: pixelated; /* Mantém a nitidez das texturas de Minecraft */
